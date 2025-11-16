@@ -26,6 +26,7 @@ public class ScenarioConditionConverter {
                     .setSensorId(scenarioCondition.getSensorId())
                     .setType(conditionTypeConverter.toAvro(scenarioCondition.getType()))
                     .setOperation(conditionOperationConverter.toAvro(scenarioCondition.getOperation()))
+                    .setValue(scenarioCondition.getValue())
                     .build());
         }
 

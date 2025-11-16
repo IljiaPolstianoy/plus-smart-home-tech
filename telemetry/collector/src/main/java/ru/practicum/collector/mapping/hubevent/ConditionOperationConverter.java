@@ -16,11 +16,11 @@ public class ConditionOperationConverter {
 
         switch (conditionOperation) {
             case EQUALS:
-                return EQUALS;
+                return ConditionOperationAvro.EQUALS;
             case GREATER_THAN:
-                return GREATER_THAN;
+                return ConditionOperationAvro.GREATER_THAN;
             case LOWER_THAN:
-                return LOWER_THAN;
+                return ConditionOperationAvro.LOWER_THAN;
             default:
                 throw new IllegalArgumentException("Unknown device type: " + conditionOperation);
         }

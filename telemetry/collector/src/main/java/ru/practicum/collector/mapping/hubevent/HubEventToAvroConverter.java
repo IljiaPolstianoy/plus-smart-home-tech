@@ -47,8 +47,8 @@ public class HubEventToAvroConverter {
             ScenarioAddedEvent scenarioAddedEvent = (ScenarioAddedEvent) event;
             return ScenarioAddedEventAvro.newBuilder()
                     .setName(scenarioAddedEvent.getName())
-                    .setActions(deviceActionConverter.toAvro(scenarioAddedEvent.getActions()))
                     .setConditions(scenarioConditionConverter.toAvro(scenarioAddedEvent.getConditions()))
+                    .setActions(deviceActionConverter.toAvro(scenarioAddedEvent.getActions()))
                     .build();
         } else if (event instanceof ScenarioRemovedEvent) {
             ScenarioRemovedEvent scenarioRemovedEvent = (ScenarioRemovedEvent) event;
