@@ -17,7 +17,7 @@ import java.time.Instant;
         defaultImpl = SensorEventType.class
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = LightSensorEvent.class, name = "CLIMATE_SENSOR_EVENT"),
+        @JsonSubTypes.Type(value = ClimateSensorEvent.class, name = "CLIMATE_SENSOR_EVENT"),
         @JsonSubTypes.Type(value = LightSensorEvent.class, name = "LIGHT_SENSOR_EVENT"),
         @JsonSubTypes.Type(value = MotionSensorEvent.class, name = "MOTION_SENSOR_EVENT"),
         @JsonSubTypes.Type(value = SwitchSensorEvent.class, name = "SWITCH_SENSOR_EVENT"),
