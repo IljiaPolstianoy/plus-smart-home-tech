@@ -46,7 +46,6 @@
 
     <build>
         <plugins>
-            <!-- Spring Boot Maven Plugin для создания исполняемого JAR -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
