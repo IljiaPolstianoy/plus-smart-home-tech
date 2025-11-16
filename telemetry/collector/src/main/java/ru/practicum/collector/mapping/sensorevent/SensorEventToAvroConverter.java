@@ -39,7 +39,7 @@ public class SensorEventToAvroConverter {
         } else if (event instanceof SwitchSensorEvent) {
             SwitchSensorEvent switchEvent = (SwitchSensorEvent) event;
             return SwitchSensorAvro.newBuilder()
-                    .setStat(switchEvent.isStat())
+                    .setStat(switchEvent.isState())
                     .build();
 
         } else if (event instanceof ClimateSensorEvent) {
