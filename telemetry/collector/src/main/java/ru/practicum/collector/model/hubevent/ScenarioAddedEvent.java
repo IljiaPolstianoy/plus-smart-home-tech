@@ -16,7 +16,6 @@ import java.util.List;
 public class ScenarioAddedEvent extends HubEvent {
 
     @NotBlank
-    @Max(2147483647)
     @Min(3)
     private String name;
 

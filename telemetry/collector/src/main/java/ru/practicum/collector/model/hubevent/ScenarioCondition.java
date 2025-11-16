@@ -15,5 +15,5 @@ public class ScenarioCondition {
 
     private ConditionOperation operation;
 
-    private Integer value;
+    private int value;
 }
