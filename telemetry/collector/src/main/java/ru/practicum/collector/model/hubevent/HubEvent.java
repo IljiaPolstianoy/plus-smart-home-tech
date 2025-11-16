@@ -17,7 +17,7 @@ import java.time.Instant;
         defaultImpl = HubEventType.class
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = DeviceAddedEvent.class, name = "DEVICE_ADDED_EVENT"),
+        @JsonSubTypes.Type(value = DeviceAddedEvent.class, name = "DEVICE_ADDED"),
         @JsonSubTypes.Type(value = DeviceRemovedEvent.class, names = "DEVICE_REMOVED_EVENT"),
         @JsonSubTypes.Type(value = ScenarioAddedEvent.class, name = "SCENARIO_ADDED_EVENT"),
         @JsonSubTypes.Type(value = ScenarioRemovedEvent.class, name = "SCENARIO_REMOVED_EVENT")
