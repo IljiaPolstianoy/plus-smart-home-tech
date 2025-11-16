@@ -1,9 +1,6 @@
 package ru.practicum.collector.model.hubevent;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -16,7 +13,7 @@ import java.util.List;
 public class ScenarioAddedEvent extends HubEvent {
 
     @NotBlank
-    @Min(3)
+    @Size(min = 3, max = 2147483647)
     private String name;
 
     @NotNull
