@@ -22,14 +22,14 @@ public class HubEventAvroSerialization implements Serializer<HubEventAvro> {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
             BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(outputStream, null);
-            DatumWriter<HubEventAvro> datumWriter = new SpecificDatumWriter<HubEventAvro>(HubEventAvro.class);
+            DatumWriter<HubEventAvro> datumWriter = new SpecificDatumWriter<>(HubEventAvro.class);
 
             datumWriter.write(event, encoder);
             encoder.flush();
 
             return outputStream.toByteArray();
         } catch (IOException e) {
-            throw new SerializationException("Ошибка сериализации экземпляра SensorEventAvro", e);
+            throw new SerializationException("Ошибка сериализации экземпляра HubEventAvro", e);
         }
     }
 }

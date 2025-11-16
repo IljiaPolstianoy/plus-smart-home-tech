@@ -15,7 +15,7 @@ import java.util.List;
 public class ScenarioAddedEvent extends HubEvent {
 
     @NotBlank
-    @Size(min = 3)
+    @Size(min = 3, max = 2147483647)
     private String name;
 
     @NotNull
