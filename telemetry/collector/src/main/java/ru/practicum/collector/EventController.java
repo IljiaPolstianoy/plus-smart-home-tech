@@ -21,8 +21,9 @@ public class EventController extends CollectorControllerGrpc.CollectorController
 
     private final Map<SensorEventProto.PayloadCase, SensorEventHandler> sensorEventHandlers;
     private final Map<HubEventProto.PayloadCase, HubEventHandler> hubEventHandlers;
+    private final SendKafka sendKafka;
 
-    public EventController(Set<SensorEventHandler> sensorEventHandlers, Set<HubEventHandler> hubEventHandlers) {
+    public EventController(Set<SensorEventHandler> sensorEventHandlers, Set<HubEventHandler> hubEventHandlers, SendKafka sendKafka) {
         this.sensorEventHandlers = sensorEventHandlers.stream()
                 .collect(Collectors.toMap(
                         SensorEventHandler::getMessageType,
@@ -33,6 +34,7 @@ public class EventController extends CollectorControllerGrpc.CollectorController
                         HubEventHandler::getMessageType,
                         Function.identity()
                 ));
+        this.sendKafka = sendKafka;
     }
 
     /**
@@ -45,8 +47,7 @@ public class EventController extends CollectorControllerGrpc.CollectorController
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
         try {
-            // здесь реализуется бизнес-логика
-            // ...
+            sendKafka.send(request);
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
@@ -69,8 +70,7 @@ public class EventController extends CollectorControllerGrpc.CollectorController
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
         try {
-            // здесь реализуется бизнес-логика
-            // ...
+            sendKafka.send(request);
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();

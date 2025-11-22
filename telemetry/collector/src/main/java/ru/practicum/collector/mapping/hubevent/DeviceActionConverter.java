@@ -1,36 +1,42 @@
 package ru.practicum.collector.mapping.hubevent;
 
 import org.springframework.stereotype.Component;
-import ru.practicum.collector.model.hubevent.DeviceAction;
+import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
+import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
 import ru.yandex.practicum.kafka.telemetry.event.DeviceActionAvro;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class DeviceActionConverter {
 
-    private ActionTypeConverter actionTypeConverter;
-
-    public DeviceActionConverter(ActionTypeConverter actionTypeConverter) {
-        this.actionTypeConverter = actionTypeConverter;
+    public List<DeviceActionAvro> toAvro(List<DeviceActionProto> protoList) {
+        return protoList.stream()
+                .map(this::toAvro)
+                .collect(Collectors.toList());
     }
 
-    public List<DeviceActionAvro> toAvro(List<DeviceAction> deviceActions) {
-        if (deviceActions == null) {
-            return null;
+    public DeviceActionAvro toAvro(DeviceActionProto proto) {
+        DeviceActionAvro.Builder builder = DeviceActionAvro.newBuilder()
+                .setSensorId(proto.getSensorId())
+                .setType(toAvroActionType(proto.getType()));
+
+        if (proto.hasValue()) {
+            builder.setValue(proto.getValue());
         }
 
-        List<DeviceActionAvro> deviceActionAvros = new ArrayList<>();
+        return builder.build();
+    }
 
-        for (DeviceAction deviceAction : deviceActions) {
-            deviceActionAvros.add(DeviceActionAvro.newBuilder()
-                    .setSensorId(deviceAction.getSensorId())
-                    .setType(actionTypeConverter.toAvro(deviceAction.getType()))
-                    .setValue(deviceAction.getValue())
-                    .build());
-        }
-
-        return deviceActionAvros;
+    private ActionTypeAvro toAvroActionType(ActionTypeProto proto) {
+        return switch (proto) {
+            case ACTIVATE -> ActionTypeAvro.ACTIVATE;
+            case DEACTIVATE -> ActionTypeAvro.DEACTIVATE;
+            case INVERSE -> ActionTypeAvro.INVERSE;
+            case SET_VALUE -> ActionTypeAvro.SET_VALUE;
+            default -> throw new IllegalArgumentException("Unknown action type: " + proto);
+        };
     }
 }

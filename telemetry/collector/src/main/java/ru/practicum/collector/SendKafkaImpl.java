@@ -7,30 +7,30 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.stereotype.Service;
 import ru.practicum.collector.mapping.hubevent.HubEventAvroSerialization;
-import ru.practicum.collector.mapping.hubevent.HubEventToAvroConverter;
+import ru.practicum.collector.mapping.hubevent.HubEventProtoToAvroConverter;
 import ru.practicum.collector.mapping.sensorevent.SensorEventAvroSerialization;
-import ru.practicum.collector.mapping.sensorevent.SensorEventToAvroConverter;
-import ru.practicum.collector.model.hubevent.HubEvent;
-import ru.practicum.collector.model.sensorevent.SensorEvent;
+import ru.practicum.collector.mapping.sensorevent.SensorEventProtoToAvroConverter;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro;
 
 import java.util.Properties;
 
 @Service
-public class SendSensorKafkaImpl implements SendKafka {
+public class SendKafkaImpl implements SendKafka {
 
-    private final SensorEventToAvroConverter converterSensor;
+    private final SensorEventProtoToAvroConverter converterSensor;
 
-    private final HubEventToAvroConverter converterHub;
+    private final HubEventProtoToAvroConverter converterHub;
 
-    public SendSensorKafkaImpl(SensorEventToAvroConverter converterSensor, HubEventToAvroConverter converterHub) {
+    public SendKafkaImpl(SensorEventProtoToAvroConverter converterSensor, HubEventProtoToAvroConverter converterHub) {
         this.converterSensor = converterSensor;
         this.converterHub = converterHub;
     }
 
     @Override
-    public boolean send(SensorEvent event) {
+    public boolean send(SensorEventProto event) {
         final Properties config = new Properties();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -52,7 +52,7 @@ public class SendSensorKafkaImpl implements SendKafka {
     }
 
     @Override
-    public boolean send(HubEvent event) {
+    public boolean send(HubEventProto event) {
         final Properties config = new Properties();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
