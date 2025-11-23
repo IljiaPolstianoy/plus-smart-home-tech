@@ -51,6 +51,9 @@ public class HubEventProcessor implements Runnable {
     }
 
     private void processHubEvent(HubEventAvro hubEvent) {
+        System.out.println("=== GITHUB_DEBUG_HUB_EVENT ===");
+        System.out.println("📥 Hub событие: " + hubEvent.getPayload().getClass().getSimpleName() +
+                ", хаб: " + hubEvent.getHubId());
         try {
             log.info("📥 Получено hub событие: {}", hubEvent); // Весь объект
             String hubId = hubEvent.getHubId();
@@ -67,7 +70,8 @@ public class HubEventProcessor implements Runnable {
                 case "ScenarioAddedEventAvro":
                     processScenarioAdded(hubId, (ru.yandex.practicum.kafka.telemetry.event.ScenarioAddedEventAvro) hubEvent.getPayload());
                     break;
-                case "ScenarioRemovedEventAvro":
+                case "ScenarioRemovedEventAvro":    System.out.println("📥 Hub событие: " + hubEvent.getPayload().getClass().getSimpleName() +
+                        ", хаб: " + hubEvent.getHubId());
                     processScenarioRemoved(hubId, (ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro) hubEvent.getPayload());
                     break;
                 default:

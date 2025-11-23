@@ -17,7 +17,7 @@ grpc:
     port: 9094
   client:
     hub-router:
-      address: 'static://localhost:59090'
+      address: 'static://localhost:59091'  # Измени на 59091 как в тестах!
       enableKeepAlive: true
       keepAliveWithoutCalls: true
       negotiationType: plaintext
@@ -31,14 +31,21 @@ kafka:
 
 logging:
   level:
-    ru.yandex.practicum: INFO
-    ru.yandex.practicum.processor: INFO
-    ru.yandex.practicum.handler: INFO
-    ru.yandex.practicum.repository: INFO
+    ru.yandex.practicum: DEBUG
+    ru.yandex.practicum.processor: DEBUG
+    ru.yandex.practicum.handler: DEBUG
+    ru.yandex.practicum.repository: DEBUG
+
     org.apache.kafka: INFO
     org.springframework.kafka: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
+  file:
+    name: logs/analyzer.log
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 8083

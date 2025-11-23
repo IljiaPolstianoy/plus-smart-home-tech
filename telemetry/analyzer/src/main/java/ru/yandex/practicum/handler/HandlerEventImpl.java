@@ -24,11 +24,17 @@ public class HandlerEventImpl implements HandlerEvent {
 
     @Override
     public void handler(SensorsSnapshotAvro snapshotAvro, String hubId) {
+        // === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ GITHUB ===
+        System.out.println("=== GITHUB_DEBUG_HANDLER ===");
+        System.out.println("🎯 Обработка снапшота для хаба: " + hubId);
+        System.out.println("📊 Сенсоры в снапшоте: " + snapshotAvro.getSensorsState().keySet());
+
         log.info("🎯 Начало обработки снапшота для хаба: {}", hubId);
         log.info("📊 Снапшот содержит сенсоры: {}", snapshotAvro.getSensorsState().keySet());
 
         // Детально логируем каждый сенсор в снапшоте
         snapshotAvro.getSensorsState().forEach((sensorId, sensorState) -> {
+            System.out.println("🔍 Сенсор " + sensorId + ": data=" + sensorState.getData());
             log.info("🔍 Сенсор {}: timestamp={}, data={}",
                     sensorId, sensorState.getTimestamp(), sensorState.getData());
         });
@@ -37,7 +43,16 @@ public class HandlerEventImpl implements HandlerEvent {
 
         final List<ScenarioProjection> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
 
+        // === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ GITHUB ===
+        System.out.println("🔍 Найдено сценариев в БД для хаба " + hubId + ": " + scenarios.size());
         log.info("Обработка снапшота для хаба {}. Найдено записей: {}", hubId, scenarios.size());
+
+        // Логируем каждый сценарий для GitHub
+        for (ScenarioProjection scenario : scenarios) {
+            System.out.println("📋 Сценарий: " + scenario.getScenarioName() +
+                    ", условия: " + scenario.getConditionType() +
+                    ", действия: " + scenario.getActionType());
+        }
 
         // Группируем по ID сценария
         Map<Long, List<ScenarioProjection>> scenariosById = scenarios.stream()
@@ -48,6 +63,11 @@ public class HandlerEventImpl implements HandlerEvent {
             List<ScenarioProjection> scenarioDetails = entry.getValue();
 
             String scenarioName = scenarioDetails.get(0).getScenarioName();
+
+            // === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ GITHUB ===
+            System.out.println("=== GITHUB_DEBUG_SCENARIO ===");
+            System.out.println("🔍 Проверяем сценарий '" + scenarioName + "' для хаба " + hubId);
+
             log.info("🔍 Проверяем сценарий '{}' для хаба {}", scenarioName, hubId);
 
             // Детально логируем условия сценария
@@ -55,8 +75,13 @@ public class HandlerEventImpl implements HandlerEvent {
                     .filter(detail -> detail.getConditionType() != null)
                     .collect(Collectors.toList());
 
+            System.out.println("   Условия сценария '" + scenarioName + "':");
             log.info("   Условия сценария '{}':", scenarioName);
             for (ScenarioProjection condition : conditions) {
+                System.out.println("     - Сенсор: " + condition.getSensorId() +
+                        ", Тип: " + condition.getConditionType() +
+                        ", Операция: " + condition.getConditionOperation() +
+                        ", Значение: " + condition.getConditionValue());
                 log.info("     - Сенсор: {}, Тип: {}, Операция: {}, Значение: {}",
                         condition.getSensorId(), condition.getConditionType(),
                         condition.getConditionOperation(), condition.getConditionValue());
@@ -67,16 +92,24 @@ public class HandlerEventImpl implements HandlerEvent {
                     .filter(detail -> detail.getActionType() != null && detail.getActionSensorId() != null)
                     .collect(Collectors.toList());
 
+            System.out.println("   Действия сценария '" + scenarioName + "':");
             log.info("   Действия сценария '{}':", scenarioName);
             for (ScenarioProjection action : actions) {
+                System.out.println("     - Сенсор: " + action.getActionSensorId() +
+                        ", Тип: " + action.getActionType() +
+                        ", Значение: " + action.getActionValue());
                 log.info("     - Сенсор: {}, Тип: {}, Значение: {}",
                         action.getActionSensorId(), action.getActionType(), action.getActionValue());
             }
 
             boolean allConditionsMet = areAllConditionsMet(scenarioDetails, sensorStateAvroMap);
+
+            // === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ GITHUB ===
+            System.out.println("   Условия сценария '" + scenarioName + "' выполнены: " + allConditionsMet);
             log.info("   Условия сценария '{}' выполнены: {}", scenarioName, allConditionsMet);
 
             if (allConditionsMet) {
+                System.out.println("✅ АКТИВАЦИЯ СЦЕНАРИЯ '" + scenarioName + "'");
                 log.info("✅ АКТИВАЦИЯ СЦЕНАРИЯ '{}'", scenarioName);
                 activateScenario(scenarioId, scenarioName, hubId, scenarioDetails);
             }
@@ -91,6 +124,7 @@ public class HandlerEventImpl implements HandlerEvent {
                 .collect(Collectors.toList());
 
         if (conditions.isEmpty()) {
+            System.out.println("❌ Нет условий для проверки");
             log.warn("Нет условий для проверки");
             return false;
         }
@@ -98,11 +132,13 @@ public class HandlerEventImpl implements HandlerEvent {
         for (ScenarioProjection condition : conditions) {
             SensorStateAvro sensorState = sensorStates.get(condition.getSensorId());
             if (sensorState == null) {
+                System.out.println("❌ Сенсор " + condition.getSensorId() + " не найден в снапшоте");
                 log.warn("❌ Сенсор {} не найден в снапшоте", condition.getSensorId());
                 return false;
             }
 
             boolean conditionMet = isConditionMet(condition, sensorState);
+            System.out.println("   Проверка условия для сенсора " + condition.getSensorId() + ": " + conditionMet);
             log.info("   Проверка условия для сенсора {}: {}", condition.getSensorId(), conditionMet);
 
             if (!conditionMet) {
@@ -114,12 +150,15 @@ public class HandlerEventImpl implements HandlerEvent {
 
     private boolean isConditionMet(ScenarioProjection condition, SensorStateAvro sensorState) {
         Object sensorData = sensorState.getData();
+        System.out.println("   Данные сенсора " + condition.getSensorId() + ": " + sensorData);
         log.info("   Данные сенсора {}: {}", condition.getSensorId(), sensorData);
 
         switch (condition.getConditionType()) {
             case "TEMPERATURE":
                 if (sensorData instanceof ClimateSensorAvro) {
                     ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
+                    System.out.println("   Температура: " + climateSensor.getTemperatureC() + "°C, условие: " +
+                            condition.getConditionOperation() + " " + condition.getConditionValue());
                     log.info("   Температура: {}°C, условие: {} {}",
                             climateSensor.getTemperatureC(), condition.getConditionOperation(), condition.getConditionValue());
                     return checkNumericCondition(condition, climateSensor.getTemperatureC());
@@ -128,6 +167,8 @@ public class HandlerEventImpl implements HandlerEvent {
             case "MOTION":
                 if (sensorData instanceof MotionSensorAvro) {
                     MotionSensorAvro motionSensor = (MotionSensorAvro) sensorData;
+                    System.out.println("   Движение: " + motionSensor.getMotion() + ", условие: " +
+                            condition.getConditionOperation() + " " + condition.getConditionValue());
                     log.info("   Движение: {}, условие: {} {}",
                             motionSensor.getMotion(), condition.getConditionOperation(), condition.getConditionValue());
                     return checkBooleanCondition(condition, motionSensor.getMotion());
@@ -136,6 +177,8 @@ public class HandlerEventImpl implements HandlerEvent {
             case "SWITCH":
                 if (sensorData instanceof SwitchSensorAvro) {
                     SwitchSensorAvro switchSensor = (SwitchSensorAvro) sensorData;
+                    System.out.println("   Переключатель: " + switchSensor.getStat() + ", условие: " +
+                            condition.getConditionOperation() + " " + condition.getConditionValue());
                     log.info("   Переключатель: {}, условие: {} {}",
                             switchSensor.getStat(), condition.getConditionOperation(), condition.getConditionValue());
                     return checkBooleanCondition(condition, switchSensor.getStat());
@@ -144,6 +187,8 @@ public class HandlerEventImpl implements HandlerEvent {
             case "LUMINOSITY":
                 if (sensorData instanceof LightSensorAvro) {
                     LightSensorAvro lightSensor = (LightSensorAvro) sensorData;
+                    System.out.println("   Освещенность: " + lightSensor.getLuminosity() + ", условие: " +
+                            condition.getConditionOperation() + " " + condition.getConditionValue());
                     log.info("   Освещенность: {}, условие: {} {}",
                             lightSensor.getLuminosity(), condition.getConditionOperation(), condition.getConditionValue());
                     return checkNumericCondition(condition, lightSensor.getLuminosity());
@@ -155,12 +200,15 @@ public class HandlerEventImpl implements HandlerEvent {
                     ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
                     int value = "HUMIDITY".equals(condition.getConditionType()) ?
                             climateSensor.getHumidity() : climateSensor.getCo2Level();
+                    System.out.println("   " + condition.getConditionType() + ": " + value + ", условие: " +
+                            condition.getConditionOperation() + " " + condition.getConditionValue());
                     log.info("   {}: {}, условие: {} {}",
                             condition.getConditionType(), value, condition.getConditionOperation(), condition.getConditionValue());
                     return checkNumericCondition(condition, value);
                 }
                 break;
             default:
+                System.out.println("❌ Неизвестный тип условия: " + condition.getConditionType());
                 log.warn("❌ Неизвестный тип условия: {}", condition.getConditionType());
         }
         return false;
@@ -169,6 +217,7 @@ public class HandlerEventImpl implements HandlerEvent {
     private boolean checkNumericCondition(ScenarioProjection condition, int sensorValue) {
         Integer conditionValue = condition.getConditionValue();
         if (conditionValue == null) {
+            System.out.println("❌ Отсутствует значение условия для числовой проверки");
             log.warn("❌ Отсутствует значение условия для числовой проверки");
             return false;
         }
@@ -177,17 +226,21 @@ public class HandlerEventImpl implements HandlerEvent {
         switch (condition.getConditionOperation()) {
             case "GREATER_THAN":
                 result = sensorValue > conditionValue;
+                System.out.println("   " + sensorValue + " > " + conditionValue + " = " + result);
                 log.info("   {} > {} = {}", sensorValue, conditionValue, result);
                 return result;
             case "LOWER_THAN":
                 result = sensorValue < conditionValue;
+                System.out.println("   " + sensorValue + " < " + conditionValue + " = " + result);
                 log.info("   {} < {} = {}", sensorValue, conditionValue, result);
                 return result;
             case "EQUALS":
                 result = sensorValue == conditionValue;
+                System.out.println("   " + sensorValue + " == " + conditionValue + " = " + result);
                 log.info("   {} == {} = {}", sensorValue, conditionValue, result);
                 return result;
             default:
+                System.out.println("❌ Неизвестная операция: " + condition.getConditionOperation());
                 log.warn("❌ Неизвестная операция: {}", condition.getConditionOperation());
                 return false;
         }
@@ -198,9 +251,11 @@ public class HandlerEventImpl implements HandlerEvent {
             Integer conditionValue = condition.getConditionValue();
             boolean conditionBool = conditionValue != null && conditionValue != 0;
             boolean result = sensorValue == conditionBool;
+            System.out.println("   " + sensorValue + " == " + conditionBool + " = " + result);
             log.info("   {} == {} = {}", sensorValue, conditionBool, result);
             return result;
         }
+        System.out.println("❌ Неподдерживаемая операция для boolean: " + condition.getConditionOperation());
         log.warn("❌ Неподдерживаемая операция для boolean: {}", condition.getConditionOperation());
         return false;
     }
@@ -212,9 +267,13 @@ public class HandlerEventImpl implements HandlerEvent {
                 .filter(detail -> detail.getActionType() != null && detail.getActionSensorId() != null)
                 .collect(Collectors.toList());
 
+        System.out.println("🎯 Выполняем " + actions.size() + " действий для сценария '" + scenarioName + "'");
         log.info("🎯 Выполняем {} действий для сценария '{}'", actions.size(), scenarioName);
 
         for (ScenarioProjection actionDetail : actions) {
+            System.out.println("   🚀 Действие: сенсор=" + actionDetail.getActionSensorId() +
+                    ", тип=" + actionDetail.getActionType() +
+                    ", значение=" + actionDetail.getActionValue());
             log.info("   🚀 Действие: сенсор={}, тип={}, значение={}",
                     actionDetail.getActionSensorId(), actionDetail.getActionType(), actionDetail.getActionValue());
 

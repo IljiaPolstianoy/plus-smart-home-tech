@@ -32,8 +32,11 @@ public class SnapshotProcessor implements Runnable {
                     ConsumerRecords<String, SensorsSnapshotAvro> records = snapshotConsumer.poll(Duration.ofMillis(1000));
 
                     for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
-                        log.info("📥 Получен снапшот: key={}, hubId={}, sensorsCount={}",
-                                record.key(), record.value().getHubId(), record.value().getSensorsState().size());
+                        System.out.println("=== GITHUB_DEBUG_SNAPSHOT ===");
+                        System.out.println("📥 Снапшот получен: key=" + record.key() +
+                                ", hubId=" + record.value().getHubId() +
+                                ", сенсоров=" + record.value().getSensorsState().size());
+
 
                         SensorsSnapshotAvro snapshot = record.value();
                         log.info("📊 Снапшот детально: {}", snapshot);
