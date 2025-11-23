@@ -17,7 +17,7 @@ grpc:
     port: 9094
   client:
     hub-router:
-      address: 'static://localhost:59091'  # Измени на 59091 как в тестах!
+      address: 'static://localhost:59090'
       enableKeepAlive: true
       keepAliveWithoutCalls: true
       negotiationType: plaintext
