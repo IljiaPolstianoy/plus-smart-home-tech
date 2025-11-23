@@ -10,7 +10,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.common.serialization.VoidDeserializer;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.error.WakeupException;
 import ru.yandex.practicum.kafka.telemetry.event.*;

@@ -3,12 +3,11 @@ package ru.yandex.practicum.mapping;
 import org.apache.avro.Schema;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.common.serialization.Serializer;
-import ru.practicum.collector.error.SerializationException;
+import ru.yandex.practicum.error.SerializationException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
