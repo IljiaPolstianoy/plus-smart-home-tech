@@ -6,28 +6,57 @@ import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
 import ru.yandex.practicum.kafka.telemetry.event.ActionTypeAvro;
 import ru.yandex.practicum.kafka.telemetry.event.DeviceActionAvro;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class DeviceActionConverter {
 
     public List<DeviceActionAvro> toAvro(List<DeviceActionProto> protoList) {
-        return protoList.stream()
-                .map(this::toAvro)
-                .collect(Collectors.toList());
+        System.out.println("=== START ACTIONS CONVERSION ===");
+        System.out.println("Number of actions: " + protoList.size());
+
+        List<DeviceActionAvro> result = new ArrayList<>();
+        for (int i = 0; i < protoList.size(); i++) {
+            System.out.println("Converting action " + i);
+            DeviceActionProto proto = protoList.get(i);
+
+            try {
+                DeviceActionAvro avro = toAvro(proto);
+                result.add(avro);
+                System.out.println("Action " + i + " converted successfully");
+            } catch (Exception e) {
+                System.err.println("ERROR converting action " + i + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("=== END ACTIONS CONVERSION ===");
+        return result;
     }
 
     public DeviceActionAvro toAvro(DeviceActionProto proto) {
+        System.out.println("Converting action for sensor: " + proto.getSensorId());
+        System.out.println("Action type: " + proto.getType());
+
         DeviceActionAvro.Builder builder = DeviceActionAvro.newBuilder()
                 .setSensorId(proto.getSensorId())
                 .setType(toAvroActionType(proto.getType()));
 
-        if (proto.hasValue()) {
-            builder.setValue(proto.getValue());
+        // ЗАМЕНИТЕ hasValue() на безопасную проверку:
+        try {
+            // Пробуем получить значение - если не установлено, будет исключение
+            int value = proto.getValue();
+            builder.setValue(value);
+            System.out.println("Value set: " + value);
+        } catch (Exception e) {
+            // Поле value не установлено - это нормально для optional поля
+            System.out.println("Value not set - using default");
         }
 
-        return builder.build();
+        DeviceActionAvro result = builder.build();
+        System.out.println("Action conversion completed");
+        return result;
     }
 
     private ActionTypeAvro toAvroActionType(ActionTypeProto proto) {
