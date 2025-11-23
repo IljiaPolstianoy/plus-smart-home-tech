@@ -47,6 +47,7 @@ public class AggregationStarter {
 
         // создаём потребителя
         KafkaConsumer<String, SensorEventAvro> consumer = new KafkaConsumer<>(configConsumer);
+
         Producer<String, SensorsSnapshotAvro> producer = new KafkaProducer<>(configProducer);
 
         // регистрируем хук, в котором вызываем метод wakeup.
@@ -103,7 +104,10 @@ public class AggregationStarter {
         }
     }
 
-    private static void manageOffsets(ConsumerRecord<String, SensorEventAvro> record, int count, KafkaConsumer<String, SensorEventAvro> consumer) {
+    private static void manageOffsets(
+            ConsumerRecord<String, SensorEventAvro> record,
+            int count,
+            KafkaConsumer<String, SensorEventAvro> consumer) {
         // обновляем текущий оффсет для топика-партиции
         currentOffsets.put(
                 new TopicPartition(record.topic(), record.partition()),
@@ -128,7 +132,6 @@ public class AggregationStarter {
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, SensorEventDeserializer.class.getName());
 
-        // Настройки, выбранные по условиям задачи
         properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 100);
         properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, 3072000);
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, 307200);
