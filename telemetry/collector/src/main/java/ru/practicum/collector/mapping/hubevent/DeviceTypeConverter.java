@@ -2,12 +2,13 @@ package ru.practicum.collector.mapping.hubevent;
 
 import org.springframework.stereotype.Component;
 import ru.practicum.collector.model.hubevent.DeviceType;
+import ru.yandex.practicum.grpc.telemetry.event.DeviceTypeProto;
 import ru.yandex.practicum.kafka.telemetry.event.DeviceTypeAvro;
 
 @Component
 public class DeviceTypeConverter {
 
-    public DeviceTypeAvro toAvro(DeviceType deviceType) {
+    public DeviceTypeAvro toAvro(DeviceTypeProto deviceType) {
         if (deviceType == null) {
             return null;
         }

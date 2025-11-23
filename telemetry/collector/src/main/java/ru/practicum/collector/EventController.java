@@ -21,8 +21,9 @@ public class EventController extends CollectorControllerGrpc.CollectorController
 
     private final Map<SensorEventProto.PayloadCase, SensorEventHandler> sensorEventHandlers;
     private final Map<HubEventProto.PayloadCase, HubEventHandler> hubEventHandlers;
+    private final SendKafka sendKafka;
 
-    public EventController(Set<SensorEventHandler> sensorEventHandlers, Set<HubEventHandler> hubEventHandlers) {
+    public EventController(Set<SensorEventHandler> sensorEventHandlers, Set<HubEventHandler> hubEventHandlers, SendKafka sendKafka) {
         this.sensorEventHandlers = sensorEventHandlers.stream()
                 .collect(Collectors.toMap(
                         SensorEventHandler::getMessageType,
@@ -33,6 +34,7 @@ public class EventController extends CollectorControllerGrpc.CollectorController
                         HubEventHandler::getMessageType,
                         Function.identity()
                 ));
+        this.sendKafka = sendKafka;
     }
 
     /**
@@ -45,8 +47,7 @@ public class EventController extends CollectorControllerGrpc.CollectorController
     @Override
     public void collectSensorEvent(SensorEventProto request, StreamObserver<Empty> responseObserver) {
         try {
-            // здесь реализуется бизнес-логика
-            // ...
+            sendKafka.send(request);
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
@@ -68,9 +69,20 @@ public class EventController extends CollectorControllerGrpc.CollectorController
      */
     @Override
     public void collectHubEvent(HubEventProto request, StreamObserver<Empty> responseObserver) {
+        System.out.println("=== COLLECT HUB EVENT CALLED ===");
+        System.out.println("HubId: " + request.getHubId());
+        System.out.println("Has timestamp: " + request.hasTimestamp());
+        System.out.println("PayloadCase: " + request.getPayloadCase());
+        System.out.println("Payload number: " + request.getPayloadCase().getNumber());
+
+        // Проверяем все возможные поля
+        System.out.println("Fields check:");
+        System.out.println("  hasDeviceAdded: " + request.hasDeviceAdded());
+        System.out.println("  hasDeviceRemoved: " + request.hasDeviceRemoved());
+        System.out.println("  hasScenarioAdded: " + request.hasScenarioAdded());
+        System.out.println("  hasScenarioRemoved: " + request.hasScenarioRemoved());
         try {
-            // здесь реализуется бизнес-логика
-            // ...
+            sendKafka.send(request);
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();

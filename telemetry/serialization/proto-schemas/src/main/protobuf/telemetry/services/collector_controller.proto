@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ru.practicum.collector;
+package telemetry.service.collector;
 
 option java_package = "ru.yandex.practicum.grpc.telemetry.collector";
 
