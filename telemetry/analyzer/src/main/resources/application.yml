@@ -6,38 +6,45 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  kafka:
+    consumer:
+      group-id: analyzer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      enable-auto-commit: false
+    properties:
+      schema.registry.url: http://localhost:8081
+      specific.avro.reader: true
 
 grpc:
-  server:
-    port: 9094
   client:
     hub-router:
-      address: 'static://localhost:59090'
-      enableKeepAlive: true
-      keepAliveWithoutCalls: true
-      negotiationType: plaintext
-
-kafka:
-  bootstrap-servers: localhost:9092
-  consumer:
-    group-id: analyzer-group
-    auto-offset-reset: earliest
-    enable-auto-commit: false
+      address: static://localhost:59090
+      negotiation-type: plaintext
+      enable-keep-alive: true
+      keep-alive-without-calls: true
 
 logging:
   level:
     ru.yandex.practicum: DEBUG
-    ru.yandex.practicum.processor: DEBUG
-    ru.yandex.practicum.handler: DEBUG
+    ru.yandex.practicum.processor: TRACE
+    ru.yandex.practicum.handler: TRACE
     ru.yandex.practicum.repository: DEBUG
 
     org.apache.kafka: INFO
-    org.springframework.kafka: INFO
+    org.springframework.kafka: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 

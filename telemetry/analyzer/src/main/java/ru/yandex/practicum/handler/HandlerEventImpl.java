@@ -29,15 +29,17 @@ public class HandlerEventImpl implements HandlerEvent {
         System.out.println("🎯 Обработка снапшота для хаба: " + hubId);
         System.out.println("📊 Сенсоры в снапшоте: " + snapshotAvro.getSensorsState().keySet());
 
-        log.info("🎯 Начало обработки снапшота для хаба: {}", hubId);
-        log.info("📊 Снапшот содержит сенсоры: {}", snapshotAvro.getSensorsState().keySet());
-
         // Детально логируем каждый сенсор в снапшоте
         snapshotAvro.getSensorsState().forEach((sensorId, sensorState) -> {
             System.out.println("🔍 Сенсор " + sensorId + ": data=" + sensorState.getData());
             log.info("🔍 Сенсор {}: timestamp={}, data={}",
                     sensorId, sensorState.getTimestamp(), sensorState.getData());
         });
+
+        if (snapshotAvro.getSensorsState() == null || snapshotAvro.getSensorsState().isEmpty()) {
+            System.out.println("❌ Нет данных о сенсорах в снапшоте!");
+            return;
+        }
 
         final Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
 
@@ -151,66 +153,118 @@ public class HandlerEventImpl implements HandlerEvent {
     private boolean isConditionMet(ScenarioProjection condition, SensorStateAvro sensorState) {
         Object sensorData = sensorState.getData();
         System.out.println("   Данные сенсора " + condition.getSensorId() + ": " + sensorData);
-        log.info("   Данные сенсора {}: {}", condition.getSensorId(), sensorData);
+        System.out.println("   Тип данных: " + (sensorData != null ? sensorData.getClass().getName() : "null"));
+        log.info("   Данные сенсора {}: {}, тип: {}",
+                condition.getSensorId(), sensorData,
+                sensorData != null ? sensorData.getClass().getName() : "null");
+
+        // Для отладки - выводим все поля через рефлексию
+        if (sensorData != null) {
+            try {
+                java.lang.reflect.Field[] fields = sensorData.getClass().getDeclaredFields();
+                for (java.lang.reflect.Field field : fields) {
+                    field.setAccessible(true);
+                    System.out.println("      Поле " + field.getName() + ": " + field.get(sensorData));
+                }
+            } catch (Exception e) {
+                System.out.println("      Ошибка рефлексии: " + e.getMessage());
+            }
+        }
 
         switch (condition.getConditionType()) {
             case "TEMPERATURE":
-                if (sensorData instanceof ClimateSensorAvro) {
-                    ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
-                    System.out.println("   Температура: " + climateSensor.getTemperatureC() + "°C, условие: " +
-                            condition.getConditionOperation() + " " + condition.getConditionValue());
-                    log.info("   Температура: {}°C, условие: {} {}",
-                            climateSensor.getTemperatureC(), condition.getConditionOperation(), condition.getConditionValue());
-                    return checkNumericCondition(condition, climateSensor.getTemperatureC());
+                // Вместо кастования используем правильные геттеры
+                if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
+                    org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+                    try {
+                        Object tempObj = record.get("temperatureC");
+                        if (tempObj instanceof Integer) {
+                            int temperature = (Integer) tempObj;
+                            System.out.println("   Температура: " + temperature + "°C, условие: " +
+                                    condition.getConditionOperation() + " " + condition.getConditionValue());
+                            return checkNumericCondition(condition, temperature);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("   Ошибка получения температуры: " + e.getMessage());
+                    }
                 }
                 break;
+
             case "MOTION":
-                if (sensorData instanceof MotionSensorAvro) {
-                    MotionSensorAvro motionSensor = (MotionSensorAvro) sensorData;
-                    System.out.println("   Движение: " + motionSensor.getMotion() + ", условие: " +
-                            condition.getConditionOperation() + " " + condition.getConditionValue());
-                    log.info("   Движение: {}, условие: {} {}",
-                            motionSensor.getMotion(), condition.getConditionOperation(), condition.getConditionValue());
-                    return checkBooleanCondition(condition, motionSensor.getMotion());
+                if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
+                    org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+                    try {
+                        Object motionObj = record.get("motion");
+                        if (motionObj instanceof Boolean) {
+                            boolean motion = (Boolean) motionObj;
+                            System.out.println("   Движение: " + motion + ", условие: " +
+                                    condition.getConditionOperation() + " " + condition.getConditionValue());
+                            return checkBooleanCondition(condition, motion);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("   Ошибка получения движения: " + e.getMessage());
+                    }
                 }
                 break;
+
             case "SWITCH":
-                if (sensorData instanceof SwitchSensorAvro) {
-                    SwitchSensorAvro switchSensor = (SwitchSensorAvro) sensorData;
-                    System.out.println("   Переключатель: " + switchSensor.getStat() + ", условие: " +
-                            condition.getConditionOperation() + " " + condition.getConditionValue());
-                    log.info("   Переключатель: {}, условие: {} {}",
-                            switchSensor.getStat(), condition.getConditionOperation(), condition.getConditionValue());
-                    return checkBooleanCondition(condition, switchSensor.getStat());
+                if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
+                    org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+                    try {
+                        Object switchObj = record.get("stat");
+                        if (switchObj instanceof Boolean) {
+                            boolean switchState = (Boolean) switchObj;
+                            System.out.println("   Переключатель: " + switchState + ", условие: " +
+                                    condition.getConditionOperation() + " " + condition.getConditionValue());
+                            return checkBooleanCondition(condition, switchState);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("   Ошибка получения состояния переключателя: " + e.getMessage());
+                    }
                 }
                 break;
+
             case "LUMINOSITY":
-                if (sensorData instanceof LightSensorAvro) {
-                    LightSensorAvro lightSensor = (LightSensorAvro) sensorData;
-                    System.out.println("   Освещенность: " + lightSensor.getLuminosity() + ", условие: " +
-                            condition.getConditionOperation() + " " + condition.getConditionValue());
-                    log.info("   Освещенность: {}, условие: {} {}",
-                            lightSensor.getLuminosity(), condition.getConditionOperation(), condition.getConditionValue());
-                    return checkNumericCondition(condition, lightSensor.getLuminosity());
+                if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
+                    org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+                    try {
+                        Object lumObj = record.get("luminosity");
+                        if (lumObj instanceof Integer) {
+                            int luminosity = (Integer) lumObj;
+                            System.out.println("   Освещенность: " + luminosity + ", условие: " +
+                                    condition.getConditionOperation() + " " + condition.getConditionValue());
+                            return checkNumericCondition(condition, luminosity);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("   Ошибка получения освещенности: " + e.getMessage());
+                    }
                 }
                 break;
+
             case "HUMIDITY":
             case "CO2LEVEL":
-                if (sensorData instanceof ClimateSensorAvro) {
-                    ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
-                    int value = "HUMIDITY".equals(condition.getConditionType()) ?
-                            climateSensor.getHumidity() : climateSensor.getCo2Level();
-                    System.out.println("   " + condition.getConditionType() + ": " + value + ", условие: " +
-                            condition.getConditionOperation() + " " + condition.getConditionValue());
-                    log.info("   {}: {}, условие: {} {}",
-                            condition.getConditionType(), value, condition.getConditionOperation(), condition.getConditionValue());
-                    return checkNumericCondition(condition, value);
+                if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
+                    org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+                    try {
+                        String fieldName = "HUMIDITY".equals(condition.getConditionType()) ? "humidity" : "co2Level";
+                        Object valueObj = record.get(fieldName);
+                        if (valueObj instanceof Integer) {
+                            int value = (Integer) valueObj;
+                            System.out.println("   " + condition.getConditionType() + ": " + value + ", условие: " +
+                                    condition.getConditionOperation() + " " + condition.getConditionValue());
+                            return checkNumericCondition(condition, value);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("   Ошибка получения " + condition.getConditionType() + ": " + e.getMessage());
+                    }
                 }
                 break;
+
             default:
                 System.out.println("❌ Неизвестный тип условия: " + condition.getConditionType());
                 log.warn("❌ Неизвестный тип условия: {}", condition.getConditionType());
         }
+
         return false;
     }
 
@@ -222,28 +276,40 @@ public class HandlerEventImpl implements HandlerEvent {
             return false;
         }
 
+        // Преобразуем операции к стандартным названиям
+        String operation = condition.getConditionOperation();
+        System.out.println("   Операция: " + operation + ", сенсор: " + sensorValue + ", условие: " + conditionValue);
+
         boolean result;
-        switch (condition.getConditionOperation()) {
+        switch (operation.toUpperCase()) {
             case "GREATER_THAN":
+            case "GT":
                 result = sensorValue > conditionValue;
-                System.out.println("   " + sensorValue + " > " + conditionValue + " = " + result);
-                log.info("   {} > {} = {}", sensorValue, conditionValue, result);
-                return result;
+                break;
             case "LOWER_THAN":
+            case "LT":
                 result = sensorValue < conditionValue;
-                System.out.println("   " + sensorValue + " < " + conditionValue + " = " + result);
-                log.info("   {} < {} = {}", sensorValue, conditionValue, result);
-                return result;
+                break;
             case "EQUALS":
+            case "EQ":
                 result = sensorValue == conditionValue;
-                System.out.println("   " + sensorValue + " == " + conditionValue + " = " + result);
-                log.info("   {} == {} = {}", sensorValue, conditionValue, result);
-                return result;
+                break;
+            case "GREATER_THAN_OR_EQUALS":
+            case "GTE":
+                result = sensorValue >= conditionValue;
+                break;
+            case "LOWER_THAN_OR_EQUALS":
+            case "LTE":
+                result = sensorValue <= conditionValue;
+                break;
             default:
-                System.out.println("❌ Неизвестная операция: " + condition.getConditionOperation());
-                log.warn("❌ Неизвестная операция: {}", condition.getConditionOperation());
+                System.out.println("❌ Неизвестная операция: " + operation);
+                log.warn("❌ Неизвестная операция: {}", operation);
                 return false;
         }
+
+        System.out.println("   Результат: " + sensorValue + " " + operation + " " + conditionValue + " = " + result);
+        return result;
     }
 
     private boolean checkBooleanCondition(ScenarioProjection condition, boolean sensorValue) {

@@ -21,8 +21,12 @@ public class HubRouterClientService {
 
     public void sendDeviceAction(String hubId, String scenarioName, DeviceActionProto action) {
         try {
-            log.info("🚀 ОТПРАВКА gRPC: hub={}, scenario={}, sensor={}, action={}",
-                    hubId, scenarioName, action.getSensorId(), action);
+            System.out.println("=== GITHUB_DEBUG_GRPC ===");
+            System.out.println("🚀 ОТПРАВКА gRPC: hub=" + hubId +
+                    ", scenario=" + scenarioName +
+                    ", sensor=" + action.getSensorId() +
+                    ", type=" + action.getType() +
+                    ", value=" + action.getValue());
 
             DeviceActionRequest request = DeviceActionRequest.newBuilder()
                     .setHubId(hubId)
@@ -35,12 +39,16 @@ public class HubRouterClientService {
                     .build();
 
             log.info("📨 gRPC запрос: {}", request);
-            hubRouterClient.handleDeviceAction(request);
+            var response = hubRouterClient.handleDeviceAction(request);
+            System.out.println("✅ gRPC запрос успешно отправлен, получен ответ: " + response);
             log.info("✅ gRPC запрос успешно отправлен");
 
-
         } catch (StatusRuntimeException e) {
-            log.error("❌ gRPC ОШИБКА: {}", e.getMessage());
+            System.out.println("❌ gRPC ОШИБКА: " + e.getStatus() + " - " + e.getMessage());
+            log.error("❌ gRPC ОШИБКА: {}", e.getStatus(), e);
+        } catch (Exception e) {
+            System.out.println("❌ Неожиданная ошибка gRPC: " + e.getMessage());
+            log.error("❌ Неожиданная ошибка gRPC", e);
         }
     }
 }
