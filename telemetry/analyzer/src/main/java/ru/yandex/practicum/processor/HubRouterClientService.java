@@ -21,6 +21,9 @@ public class HubRouterClientService {
 
     public void sendDeviceAction(String hubId, String scenarioName, DeviceActionProto action) {
         try {
+            log.info("🚀 ОТПРАВКА gRPC: hub={}, scenario={}, sensor={}, action={}",
+                    hubId, scenarioName, action.getSensorId(), action);
+
             DeviceActionRequest request = DeviceActionRequest.newBuilder()
                     .setHubId(hubId)
                     .setScenarioName(scenarioName)
@@ -31,14 +34,13 @@ public class HubRouterClientService {
                             .build())
                     .build();
 
-            log.info("Отправка действия для хаба {}: {} -> {}", hubId, scenarioName, action.getSensorId());
-
+            log.info("📨 gRPC запрос: {}", request);
             hubRouterClient.handleDeviceAction(request);
-            log.info("Действие успешно отправлено для сценария: {}", scenarioName);
+            log.info("✅ gRPC запрос успешно отправлен");
+
 
         } catch (StatusRuntimeException e) {
-            log.error("Ошибка при отправке действия через gRPC: {}", e.getStatus().getDescription());
-            throw new RuntimeException("Failed to send device action via gRPC", e);
+            log.error("❌ gRPC ОШИБКА: {}", e.getMessage());
         }
     }
 }

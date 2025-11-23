@@ -52,7 +52,10 @@ public class HubEventProcessor implements Runnable {
 
     private void processHubEvent(HubEventAvro hubEvent) {
         try {
+            log.info("📥 Получено hub событие: {}", hubEvent); // Весь объект
             String hubId = hubEvent.getHubId();
+            log.info("Hub ID: {}, Timestamp: {}, Payload type: {}",
+                    hubId, hubEvent.getTimestamp(), hubEvent.getPayload().getClass().getSimpleName());
 
             switch (hubEvent.getPayload().getClass().getSimpleName()) {
                 case "DeviceAddedEventAvro":
@@ -71,7 +74,7 @@ public class HubEventProcessor implements Runnable {
                     log.warn("Неизвестный тип события: {}", hubEvent.getPayload().getClass().getSimpleName());
             }
         } catch (Exception e) {
-            log.error("Ошибка обработки hub события", e);
+            log.error("❌ Ошибка обработки hub события: {}", hubEvent, e);
         }
     }
 

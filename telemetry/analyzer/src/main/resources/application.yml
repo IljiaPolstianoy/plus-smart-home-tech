@@ -31,31 +31,14 @@ kafka:
 
 logging:
   level:
-    # Наши классы - подробно
-    ru.yandex.practicum: DEBUG
+    ru.yandex.practicum: INFO
     ru.yandex.practicum.processor: INFO
     ru.yandex.practicum.handler: INFO
     ru.yandex.practicum.repository: INFO
-
-    # Kafka - для отладки
     org.apache.kafka: INFO
     org.springframework.kafka: INFO
-
-    # База данных - видеть SQL запросы
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
-    # Spring - общая информация
-    org.springframework: INFO
-
-    # gRPC - для отладки коммуникации
-    io.grpc: INFO
-    net.devh.boot.grpc: INFO
-
-    # Другие библиотеки - только ошибки
-    org.hibernate: INFO
-    com.zaxxer.hikari: INFO
-
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
