@@ -24,6 +24,7 @@ public class SensorsSnapshotAvroDeserialization implements Deserializer<SensorsS
     @Override
     public SensorsSnapshotAvro deserialize(String topic, byte[] data) {
         if (data == null) {
+            log.debug("Получены null данные для десериализации");
             return null;
         }
 

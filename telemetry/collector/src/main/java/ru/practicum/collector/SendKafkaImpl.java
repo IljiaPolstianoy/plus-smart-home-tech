@@ -1,5 +1,6 @@
 package ru.practicum.collector;
 
+import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -21,55 +22,78 @@ import java.util.Properties;
 public class SendKafkaImpl implements SendKafka {
 
     private final SensorEventProtoToAvroConverter converterSensor;
-
     private final HubEventProtoToAvroConverter converterHub;
 
-    public SendKafkaImpl(SensorEventProtoToAvroConverter converterSensor, HubEventProtoToAvroConverter converterHub) {
+    private final Producer<String, SensorEventAvro> sensorEventProducer;
+    private final Producer<String, HubEventAvro> hubEventProducer;
+
+    public SendKafkaImpl(SensorEventProtoToAvroConverter converterSensor,
+                         HubEventProtoToAvroConverter converterHub) {
         this.converterSensor = converterSensor;
         this.converterHub = converterHub;
+
+        this.sensorEventProducer = createSensorEventProducer();
+        this.hubEventProducer = createHubEventProducer();
     }
 
     @Override
     public boolean send(SensorEventProto event) {
-        final Properties config = new Properties();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SensorEventAvroSerialization.class);
-
-        final String topic = "telemetry.sensors.v1";
-
-        try (Producer<String, SensorEventAvro> producer = new KafkaProducer<>(config)) {
+        try {
             final SensorEventAvro avroEvent = converterSensor.toAvro(event);
+            final ProducerRecord<String, SensorEventAvro> record =
+                    new ProducerRecord<>("telemetry.sensors.v1", avroEvent);
 
-            final ProducerRecord<String, SensorEventAvro> record = new ProducerRecord<>(topic, avroEvent);
-
-            producer.send(record);
-
+            sensorEventProducer.send(record);
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка отправки в Kafka", e);
+            throw new RuntimeException("Ошибка отправки SensorEvent в Kafka", e);
         }
     }
 
     @Override
     public boolean send(HubEventProto event) {
-        final Properties config = new Properties();
+        try {
+            final HubEventAvro avroEvent = converterHub.toAvro(event);
+            final ProducerRecord<String, HubEventAvro> record =
+                    new ProducerRecord<>("telemetry.hubs.v1", avroEvent);
+
+            hubEventProducer.send(record);
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка отправки HubEvent в Kafka", e);
+        }
+    }
+
+    @PreDestroy
+    public void close() {
+        // Закрываем producers при остановке приложения
+        if (sensorEventProducer != null) {
+            sensorEventProducer.close();
+        }
+        if (hubEventProducer != null) {
+            hubEventProducer.close();
+        }
+    }
+
+    private Producer<String, SensorEventAvro> createSensorEventProducer() {
+        Properties config = new Properties();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SensorEventAvroSerialization.class);
+        config.put(ProducerConfig.ACKS_CONFIG, "all");
+        config.put(ProducerConfig.RETRIES_CONFIG, 3);
+
+        return new KafkaProducer<>(config);
+    }
+
+    private Producer<String, HubEventAvro> createHubEventProducer() {
+        Properties config = new Properties();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, HubEventAvroSerialization.class);
+        config.put(ProducerConfig.ACKS_CONFIG, "all");
+        config.put(ProducerConfig.RETRIES_CONFIG, 3);
 
-        final String topic = "telemetry.hubs.v1";
-
-        try (Producer<String, HubEventAvro> producer = new KafkaProducer<>(config)) {
-            final HubEventAvro avroEvent = converterHub.toAvro(event);
-
-            final ProducerRecord<String, HubEventAvro> record = new ProducerRecord<>(topic, avroEvent);
-
-            producer.send(record);
-
-            return true;
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка отправки в Kafka", e);
-        }
+        return new KafkaProducer<>(config);
     }
 }

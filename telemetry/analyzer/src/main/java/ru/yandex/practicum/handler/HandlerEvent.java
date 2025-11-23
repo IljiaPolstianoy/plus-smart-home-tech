@@ -4,5 +4,5 @@ import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 public interface HandlerEvent {
 
-    void handler(SensorsSnapshotAvro snapshotAvro);
+    void handler(SensorsSnapshotAvro snapshotAvro, String hubId);
 }

@@ -33,7 +33,16 @@ public class SnapshotProcessor implements Runnable {
 
                     for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
                         log.info("Получен снапшот для хаба: {}", record.key());
-                        handlerEvent.handler(record.value());
+
+                        // ФИКС: если hubId = null, используем "default-hub"
+                        SensorsSnapshotAvro snapshot = record.value();
+                        String hubId = snapshot.getHubId();
+                        if (hubId == null) {
+                            hubId = "default-hub";
+                            log.warn("hubId был null, используем: {}", hubId);
+                        }
+
+                        handlerEvent.handler(record.value(), hubId);
                     }
 
                     if (!records.isEmpty()) {

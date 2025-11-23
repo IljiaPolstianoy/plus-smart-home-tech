@@ -21,12 +21,12 @@ public class HandlerEventImpl implements HandlerEvent {
     private final HubRouterClientService hubRouterClientService;
 
     @Override
-    public void handler(SensorsSnapshotAvro snapshotAvro) {
+    public void handler(SensorsSnapshotAvro snapshotAvro, String hubId) {
         final Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
-        final List<ScenarioWithDetails> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(snapshotAvro.getHubId());
+        final List<ScenarioWithDetails> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
 
         log.info("Обработка снапшота для хаба {}. Найдено сценариев: {}",
-                snapshotAvro.getHubId(), scenarios.size());
+                hubId, scenarios.size());
 
         // Группируем сценарии по ID
         Map<Long, List<ScenarioWithDetails>> scenariosById = scenarios.stream()
@@ -39,7 +39,7 @@ public class HandlerEventImpl implements HandlerEvent {
             if (areAllConditionsMet(scenarioDetails, sensorStateAvroMap)) {
                 String scenarioName = scenarioDetails.get(0).getScenarioName();
                 log.info("Все условия сценария '{}' выполнены. Активация...", scenarioName);
-                activateScenario(scenarioId, scenarioName, snapshotAvro.getHubId(), scenarioDetails);
+                activateScenario(scenarioId, scenarioName, hubId, scenarioDetails);
             }
         }
     }

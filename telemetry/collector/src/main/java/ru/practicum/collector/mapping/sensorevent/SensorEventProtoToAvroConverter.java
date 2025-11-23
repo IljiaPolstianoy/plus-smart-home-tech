@@ -34,6 +34,9 @@ public class SensorEventProtoToAvroConverter {
             case TEMPERATURE_SENSOR:
                 TemperatureSensorProto tempSensor = proto.getTemperatureSensor();
                 return TemperatureSensorAvro.newBuilder()
+                        .setId(proto.getId())
+                        .setHubId(proto.getHubId())
+                        .setTimestamp(convertToInstant(proto.getTimestamp()))
                         .setTemperatureC(tempSensor.getTemperatureC())
                         .setTemperatureF(tempSensor.getTemperatureF())
                         .build();
