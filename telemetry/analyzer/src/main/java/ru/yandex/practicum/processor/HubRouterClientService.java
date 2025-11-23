@@ -1,6 +1,5 @@
 package ru.yandex.practicum.processor;
 
-import com.google.protobuf.Empty;
 import io.grpc.StatusRuntimeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +33,7 @@ public class HubRouterClientService {
 
             log.info("Отправка действия для хаба {}: {} -> {}", hubId, scenarioName, action.getSensorId());
 
-            Empty empty = hubRouterClient.handleDeviceAction(request);
+            hubRouterClient.handleDeviceAction(request);
             log.info("Действие успешно отправлено для сценария: {}", scenarioName);
 
         } catch (StatusRuntimeException e) {
