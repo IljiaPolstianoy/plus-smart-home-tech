@@ -79,3 +79,7 @@ CREATE OR REPLACE TRIGGER tr_bi_scenario_actions_hub_id_check
     ON scenario_actions
     FOR EACH ROW
 EXECUTE FUNCTION check_hub_id();
+
+-- Отключить триггеры
+ALTER TABLE scenario_conditions DISABLE TRIGGER tr_bi_scenario_conditions_hub_id_check;
+ALTER TABLE scenario_actions DISABLE TRIGGER tr_bi_scenario_actions_hub_id_check;

@@ -128,6 +128,7 @@ public class HubEventProcessor implements Runnable {
         scenario.setHubId(hubId);
         scenario.setName(scenarioName);
         Scenario savedScenario = scenarioRepository.save(scenario);
+        scenarioRepository.flush(); // Обновляем сессию
 
         // Обрабатываем условия
         processScenarioConditions(savedScenario, scenarioAdded.getConditions());
@@ -141,7 +142,7 @@ public class HubEventProcessor implements Runnable {
 
     private void processScenarioConditions(Scenario scenario, java.util.List<ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro> conditions) {
         for (ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro conditionAvro : conditions) {
-            // Создаем или находим условие
+            // Создаем условие
             Condition condition = new Condition();
             condition.setType(conditionAvro.getType().toString());
             condition.setOperation(conditionAvro.getOperation().toString());
@@ -157,7 +158,9 @@ public class HubEventProcessor implements Runnable {
                 continue;
             }
 
+            // Сохраняем условие
             Condition savedCondition = conditionRepository.save(condition);
+            conditionRepository.flush(); // Обновляем сессию
 
             // Проверяем существование датчика
             String sensorId = conditionAvro.getSensorId();
@@ -168,6 +171,7 @@ public class HubEventProcessor implements Runnable {
                 sensor.setId(sensorId);
                 sensor.setHubId(scenario.getHubId());
                 sensorRepository.save(sensor);
+                sensorRepository.flush(); // Обновляем сессию
                 sensorOpt = Optional.of(sensor);
             }
 
@@ -183,7 +187,7 @@ public class HubEventProcessor implements Runnable {
 
     private void processScenarioActions(Scenario scenario, java.util.List<ru.yandex.practicum.kafka.telemetry.event.DeviceActionAvro> actions) {
         for (ru.yandex.practicum.kafka.telemetry.event.DeviceActionAvro actionAvro : actions) {
-            // Создаем или находим действие
+            // Создаем действие
             Action action = new Action();
             action.setType(actionAvro.getType().toString());
 
@@ -191,7 +195,9 @@ public class HubEventProcessor implements Runnable {
                 action.setValue(actionAvro.getValue());
             }
 
+            // Сохраняем действие
             Action savedAction = actionRepository.save(action);
+            actionRepository.flush(); // Обновляем сессию
 
             // Проверяем существование датчика
             String sensorId = actionAvro.getSensorId();
@@ -202,6 +208,7 @@ public class HubEventProcessor implements Runnable {
                 sensor.setId(sensorId);
                 sensor.setHubId(scenario.getHubId());
                 sensorRepository.save(sensor);
+                sensorRepository.flush(); // Обновляем сессию
                 sensorOpt = Optional.of(sensor);
             }
 
