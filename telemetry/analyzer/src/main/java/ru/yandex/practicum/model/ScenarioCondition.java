@@ -1,34 +1,24 @@
 package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
 @Table(name = "scenario_conditions")
+@Data
 public class ScenarioCondition {
-    @EmbeddedId
-    private ScenarioConditionId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @MapsId("scenarioId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "scenario_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "scenario_id")
     private Scenario scenario;
 
-    @MapsId("sensorId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sensor_id", nullable = false)
-    private Sensor sensor;
+    @Column(name = "sensor_id")
+    private String sensorId;
 
-    @MapsId("conditionId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "condition_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "condition_id")
     private Condition condition;
-
 }

@@ -34,7 +34,6 @@ public class SnapshotProcessor implements Runnable {
                     for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
                         log.info("Получен снапшот для хаба: {}", record.key());
 
-                        // ФИКС: если hubId = null, используем "default-hub"
                         SensorsSnapshotAvro snapshot = record.value();
                         String hubId = snapshot.getHubId();
                         if (hubId == null) {

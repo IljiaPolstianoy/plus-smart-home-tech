@@ -1,30 +1,24 @@
 package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
 @Entity
 @Table(name = "scenario_actions")
+@Data
 public class ScenarioAction {
-    @EmbeddedId
-    private ScenarioActionId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @MapsId("scenarioId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "scenario_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "scenario_id")
     private Scenario scenario;
 
-    @MapsId("sensorId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sensor_id", nullable = false)
-    private Sensor sensor;
+    @Column(name = "sensor_id")  // Обратите внимание на название колонки в БД
+    private String sensorId;     // И название поля в Java
 
-    @MapsId("actionId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "action_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "action_id")
     private Action action;
-
 }

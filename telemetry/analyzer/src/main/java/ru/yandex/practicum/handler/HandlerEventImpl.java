@@ -3,9 +3,10 @@ package ru.yandex.practicum.handler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
 import ru.yandex.practicum.kafka.telemetry.event.*;
-import ru.yandex.practicum.model.ScenarioWithDetails;
+import ru.yandex.practicum.model.ScenarioProjection;
 import ru.yandex.practicum.processor.HubRouterClientService;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
@@ -23,18 +24,18 @@ public class HandlerEventImpl implements HandlerEvent {
     @Override
     public void handler(SensorsSnapshotAvro snapshotAvro, String hubId) {
         final Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
-        final List<ScenarioWithDetails> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
 
-        log.info("Обработка снапшота для хаба {}. Найдено сценариев: {}",
-                hubId, scenarios.size());
+        final List<ScenarioProjection> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
 
-        // Группируем сценарии по ID
-        Map<Long, List<ScenarioWithDetails>> scenariosById = scenarios.stream()
-                .collect(Collectors.groupingBy(ScenarioWithDetails::getScenarioId));
+        log.info("Обработка снапшота для хаба {}. Найдено записей: {}", hubId, scenarios.size());
 
-        for (Map.Entry<Long, List<ScenarioWithDetails>> entry : scenariosById.entrySet()) {
+        // Группируем по ID сценария
+        Map<Long, List<ScenarioProjection>> scenariosById = scenarios.stream()
+                .collect(Collectors.groupingBy(ScenarioProjection::getScenarioId));
+
+        for (Map.Entry<Long, List<ScenarioProjection>> entry : scenariosById.entrySet()) {
             Long scenarioId = entry.getKey();
-            List<ScenarioWithDetails> scenarioDetails = entry.getValue();
+            List<ScenarioProjection> scenarioDetails = entry.getValue();
 
             if (areAllConditionsMet(scenarioDetails, sensorStateAvroMap)) {
                 String scenarioName = scenarioDetails.get(0).getScenarioName();
@@ -44,19 +45,19 @@ public class HandlerEventImpl implements HandlerEvent {
         }
     }
 
-    private boolean areAllConditionsMet(List<ScenarioWithDetails> scenarioDetails,
+    private boolean areAllConditionsMet(List<ScenarioProjection> scenarioDetails,
                                         Map<String, SensorStateAvro> sensorStates) {
-        // Получаем все уникальные условия для этого сценария
-        List<ScenarioWithDetails> conditions = scenarioDetails.stream()
+        // Фильтруем только условия (где есть conditionType)
+        List<ScenarioProjection> conditions = scenarioDetails.stream()
                 .filter(detail -> detail.getConditionType() != null)
                 .collect(Collectors.toList());
 
         if (conditions.isEmpty()) {
+            log.warn("Нет условий для проверки");
             return false;
         }
 
-        // Проверяем каждое условие
-        for (ScenarioWithDetails condition : conditions) {
+        for (ScenarioProjection condition : conditions) {
             SensorStateAvro sensorState = sensorStates.get(condition.getSensorId());
             if (sensorState == null || !isConditionMet(condition, sensorState)) {
                 return false;
@@ -65,7 +66,7 @@ public class HandlerEventImpl implements HandlerEvent {
         return true;
     }
 
-    private boolean isConditionMet(ScenarioWithDetails condition, SensorStateAvro sensorState) {
+    private boolean isConditionMet(ScenarioProjection condition, SensorStateAvro sensorState) {
         Object sensorData = sensorState.getData();
 
         switch (condition.getConditionType()) {
@@ -75,48 +76,26 @@ public class HandlerEventImpl implements HandlerEvent {
                     return checkNumericCondition(condition, climateSensor.getTemperatureC());
                 }
                 break;
-
-            case "HUMIDITY":
-                if (sensorData instanceof ClimateSensorAvro) {
-                    ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
-                    return checkNumericCondition(condition, climateSensor.getHumidity());
-                }
-                break;
-
-            case "CO2LEVEL":
-                if (sensorData instanceof ClimateSensorAvro) {
-                    ClimateSensorAvro climateSensor = (ClimateSensorAvro) sensorData;
-                    return checkNumericCondition(condition, climateSensor.getCo2Level());
-                }
-                break;
-
             case "MOTION":
                 if (sensorData instanceof MotionSensorAvro) {
                     MotionSensorAvro motionSensor = (MotionSensorAvro) sensorData;
                     return checkBooleanCondition(condition, motionSensor.getMotion());
                 }
                 break;
-
-            case "LUMINOSITY":
-                if (sensorData instanceof LightSensorAvro) {
-                    LightSensorAvro lightSensor = (LightSensorAvro) sensorData;
-                    return checkNumericCondition(condition, lightSensor.getLuminosity());
-                }
-                break;
-
             case "SWITCH":
                 if (sensorData instanceof SwitchSensorAvro) {
                     SwitchSensorAvro switchSensor = (SwitchSensorAvro) sensorData;
                     return checkBooleanCondition(condition, switchSensor.getStat());
                 }
                 break;
+            // ... остальные типы
         }
-
         return false;
     }
 
-    private boolean checkNumericCondition(ScenarioWithDetails condition, int sensorValue) {
-        int conditionValue = condition.getConditionValue();
+    private boolean checkNumericCondition(ScenarioProjection condition, int sensorValue) {
+        Integer conditionValue = condition.getConditionValue();
+        if (conditionValue == null) return false;
 
         switch (condition.getConditionOperation()) {
             case "GREATER_THAN":
@@ -130,38 +109,33 @@ public class HandlerEventImpl implements HandlerEvent {
         }
     }
 
-    private boolean checkBooleanCondition(ScenarioWithDetails condition, boolean sensorValue) {
+    private boolean checkBooleanCondition(ScenarioProjection condition, boolean sensorValue) {
         if ("EQUALS".equals(condition.getConditionOperation())) {
-            boolean conditionValue = condition.getConditionValue() != 0;
-            return sensorValue == conditionValue;
+            Integer conditionValue = condition.getConditionValue();
+            boolean conditionBool = conditionValue != null && conditionValue != 0;
+            return sensorValue == conditionBool;
         }
         return false;
     }
 
     private void activateScenario(Long scenarioId, String scenarioName, String hubId,
-                                  List<ScenarioWithDetails> scenarioDetails) {
-        // Получаем все действия для этого сценария
-        List<ScenarioWithDetails> actions = scenarioDetails.stream()
+                                  List<ScenarioProjection> scenarioDetails) {
+        // Фильтруем только действия (где есть actionType)
+        List<ScenarioProjection> actions = scenarioDetails.stream()
                 .filter(detail -> detail.getActionType() != null && detail.getActionSensorId() != null)
-                .distinct()
                 .collect(Collectors.toList());
-
-        if (actions.isEmpty()) {
-            log.warn("Сценарий '{}' не содержит действий", scenarioName);
-            return;
-        }
 
         log.info("Выполняем {} действий для сценария '{}'", actions.size(), scenarioName);
 
-        for (ScenarioWithDetails actionDetail : actions) {
+        for (ScenarioProjection actionDetail : actions) {
             DeviceActionProto action = convertToDeviceActionProto(actionDetail);
             hubRouterClientService.sendDeviceAction(hubId, scenarioName, action);
         }
     }
 
-    private DeviceActionProto convertToDeviceActionProto(ScenarioWithDetails actionDetail) {
+    private DeviceActionProto convertToDeviceActionProto(ScenarioProjection actionDetail) {
         DeviceActionProto.Builder builder = DeviceActionProto.newBuilder()
-                .setSensorId(actionDetail.getActionSensorId()) // Используем actionSensorId
+                .setSensorId(actionDetail.getActionSensorId())
                 .setType(convertActionType(actionDetail.getActionType()));
 
         if (actionDetail.getActionValue() != null) {
@@ -171,16 +145,16 @@ public class HandlerEventImpl implements HandlerEvent {
         return builder.build();
     }
 
-    private ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto convertActionType(String actionType) {
+    private ActionTypeProto convertActionType(String actionType) {
         switch (actionType.toUpperCase()) {
             case "ACTIVATE":
-                return ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto.ACTIVATE;
+                return ActionTypeProto.ACTIVATE;
             case "DEACTIVATE":
-                return ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto.DEACTIVATE;
+                return ActionTypeProto.DEACTIVATE;
             case "INVERSE":
-                return ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto.INVERSE;
+                return ActionTypeProto.INVERSE;
             case "SET_VALUE":
-                return ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto.SET_VALUE;
+                return ActionTypeProto.SET_VALUE;
             default:
                 throw new IllegalArgumentException("Unknown action type: " + actionType);
         }

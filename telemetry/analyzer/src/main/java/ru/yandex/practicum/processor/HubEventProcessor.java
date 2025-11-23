@@ -174,7 +174,7 @@ public class HubEventProcessor implements Runnable {
             // Создаем связь сценарий-датчик-условие
             ScenarioCondition scenarioCondition = new ScenarioCondition();
             scenarioCondition.setScenario(scenario);
-            scenarioCondition.setSensor(sensorOpt.get());
+            scenarioCondition.setSensorId(sensorOpt.get().getId());
             scenarioCondition.setCondition(savedCondition);
 
             scenarioConditionRepository.save(scenarioCondition);
@@ -208,7 +208,7 @@ public class HubEventProcessor implements Runnable {
             // Создаем связь сценарий-датчик-действие
             ScenarioAction scenarioAction = new ScenarioAction();
             scenarioAction.setScenario(scenario);
-            scenarioAction.setSensor(sensorOpt.get());
+            scenarioAction.setSensorId(sensorOpt.get().getId());
             scenarioAction.setAction(savedAction);
 
             scenarioActionRepository.save(scenarioAction);

@@ -9,7 +9,7 @@ import ru.yandex.practicum.model.ScenarioAction;
 public interface ScenarioActionRepository extends JpaRepository<ScenarioAction, Long> {
 
     @Modifying
-    @Query("DELETE FROM ScenarioAction sa WHERE sa.sensor.id = :sensorId")
+    @Query(value = "DELETE FROM scenario_actions WHERE sensor_id = :sensorId", nativeQuery = true)
     void deleteBySensorId(@Param("sensorId") String sensorId);
 
     @Modifying

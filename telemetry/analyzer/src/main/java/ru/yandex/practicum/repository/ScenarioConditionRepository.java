@@ -8,9 +8,7 @@ import ru.yandex.practicum.model.ScenarioCondition;
 
 public interface ScenarioConditionRepository extends JpaRepository<ScenarioCondition, Long> {
 
-    @Modifying
-    @Query("DELETE FROM ScenarioCondition sc WHERE sc.sensor.id = :sensorId")
-    void deleteBySensorId(@Param("sensorId") String sensorId);
+    void deleteBySensorId(String sensorId);
 
     @Modifying
     @Query("DELETE FROM ScenarioCondition sc WHERE sc.scenario.id = :scenarioId")
