@@ -12,24 +12,27 @@ import ru.yandex.practicum.model.ScenarioProjection;
 import ru.yandex.practicum.processor.HubRouterClientService;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
-
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
-
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class HandlerEventImpl implements HandlerEvent {
+
+    private static final String[] TEMPERATURE_FIELDS = {"temperatureC", "temperature", "temp", "value"};
+    private static final String FIELD_LUMINOSITY = "luminosity";
+    private static final String FIELD_MOTION = "motion";
+    private static final String FIELD_SWITCH = "stat";
+
     private final ScenarioRepository scenarioRepository;
     private final HubRouterClientService hubRouterClientService;
-
 
     @Override
     public void handler(SensorsSnapshotAvro snapshotAvro, String hubId) {
         log.info("=== Обработка снапшота для хаба: {} ===", hubId);
-
 
         if (snapshotAvro.getSensorsState() == null || snapshotAvro.getSensorsState().isEmpty()) {
             log.warn("❌ Нет данных о сенсорах в снапшоте для хаба {}", hubId);
@@ -37,13 +40,17 @@ public class HandlerEventImpl implements HandlerEvent {
         }
 
         final Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
-        final List<ScenarioProjection> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
+        final List<ScenarioProjection> scenarios;
 
+        try {
+            scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
+        } catch (Exception e) {
+            log.error("Ошибка при загрузке сценариев для хаба {}: {}", hubId, e.getMessage(), e);
+            return;
+        }
 
         log.info("🔍 Найдено сценариев в БД для хаба {}: {}", hubId, scenarios.size());
 
-
-        // Группируем по ID сценария
         Map<Long, List<ScenarioProjection>> scenariosById = scenarios.stream()
                 .collect(Collectors.groupingBy(ScenarioProjection::getScenarioId));
 
@@ -55,14 +62,18 @@ public class HandlerEventImpl implements HandlerEvent {
 
             log.info("=== Проверяем сценарий '{}' для хаба {} ===", scenarioName, hubId);
 
+            try {
+                boolean allConditionsMet = areAllConditionsMet(scenarioDetails, sensorStateAvroMap);
+                log.info("Условия сценария '{}' выполнены: {}", scenarioName, allConditionsMet);
 
-            boolean allConditionsMet = areAllConditionsMet(scenarioDetails, sensorStateAvroMap);
-            log.info("Условия сценария '{}' выполнены: {}", scenarioName, allConditionsMet);
 
-
-            if (allConditionsMet) {
-                log.info("✅ АКТИВАЦИЯ СЦЕНАРИЯ '{}'", scenarioName);
-                activateScenario(scenarioId, scenarioName, hubId, scenarioDetails);
+                if (allConditionsMet) {
+                    log.info("✅ АКТИВАЦИЯ СЦЕНАРИЯ '{}'", scenarioName);
+                    activateScenario(scenarioId, scenarioName, hubId, scenarioDetails);
+                }
+            } catch (Exception e) {
+                log.error("Ошибка при проверке сценария '{}' для хаба {}: {}",
+                        scenarioName, hubId, e.getMessage(), e);
             }
         }
     }
@@ -72,7 +83,6 @@ public class HandlerEventImpl implements HandlerEvent {
         List<ScenarioProjection> conditions = scenarioDetails.stream()
                 .filter(detail -> detail.getConditionType() != null)
                 .collect(Collectors.toList());
-
 
         if (conditions.isEmpty()) {
             log.warn("❌ Нет условий для проверки");
@@ -94,7 +104,6 @@ public class HandlerEventImpl implements HandlerEvent {
 
             boolean conditionMet = isConditionMet(condition, sensorState);
             log.info("Проверка условия для сенсора {}: {}", condition.getSensorId(), conditionMet);
-
 
             if (!conditionMet) {
                 return false;
@@ -131,17 +140,15 @@ public class HandlerEventImpl implements HandlerEvent {
     }
 
     private boolean checkTemperatureCondition(ScenarioProjection condition, Object sensorData) {
-        if (!(sensorData instanceof org.apache.avro.generic.GenericRecord)) {
+        if (!(sensorData instanceof GenericRecord)) {
             log.warn("❌ Данные сенсора температуры не являются GenericRecord");
             return false;
         }
 
-        org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
+        GenericRecord record = (GenericRecord) sensorData;
         Object temperatureObj = null;
 
-        // Ищем поле с температурой по возможным именам
-        String[] tempFields = {"temperatureC", "temperature", "temp", "value"};
-        for (String fieldName : tempFields) {
+        for (String fieldName : TEMPERATURE_FIELDS) {
             if (record.hasField(fieldName)) {
                 temperatureObj = record.get(fieldName);
                 break;
@@ -149,10 +156,10 @@ public class HandlerEventImpl implements HandlerEvent {
         }
 
         if (temperatureObj == null) {
-            log.warn("❌ Температура не найдена. Доступные поля: {}",
-                    record.getSchema().getFields().stream()
-                            .map(org.apache.avro.Schema.Field::name)
-                            .collect(Collectors.toList()));
+            List<String> availableFields = record.getSchema().getFields().stream()
+                    .map(org.apache.avro.Schema.Field::name)
+                    .collect(Collectors.toList());
+            log.warn("❌ Температура не найдена. Доступные поля: {}", availableFields);
             return false;
         }
 
@@ -161,19 +168,19 @@ public class HandlerEventImpl implements HandlerEvent {
             return false;
         }
 
-        int temperature = ((Number) temperatureObj).intValue();
-        log.info("✅ Температура: {}°C", temperature);
+        double temperature = ((Number) temperatureObj).doubleValue();
+        log.info("✅ Температура: {:.1f}°C", temperature);
         return checkNumericCondition(condition, temperature);
     }
 
     private boolean checkMotionCondition(ScenarioProjection condition, Object sensorData) {
-        if (!(sensorData instanceof org.apache.avro.generic.GenericRecord)) {
+        if (!(sensorData instanceof GenericRecord)) {
             log.warn("❌ Данные сенсора движения не являются GenericRecord");
             return false;
         }
 
-        org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
-        Object motionObj = record.get("motion");
+        GenericRecord record = (GenericRecord) sensorData;
+        Object motionObj = record.get(FIELD_MOTION);
 
         if (!(motionObj instanceof Boolean)) {
             log.warn("❌ Значение движения не является boolean: {}", motionObj);
@@ -187,13 +194,13 @@ public class HandlerEventImpl implements HandlerEvent {
     }
 
     private boolean checkSwitchCondition(ScenarioProjection condition, Object sensorData) {
-        if (!(sensorData instanceof org.apache.avro.generic.GenericRecord)) {
+        if (!(sensorData instanceof GenericRecord)) {
             log.warn("❌ Данные переключателя не являются GenericRecord");
             return false;
         }
 
-        org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
-        Object switchObj = record.get("stat");
+        GenericRecord record = (GenericRecord) sensorData;
+        Object switchObj = record.get(FIELD_SWITCH);
 
         if (!(switchObj instanceof Boolean)) {
             log.warn("❌ Значение переключателя не является boolean: {}", switchObj);
@@ -208,20 +215,20 @@ public class HandlerEventImpl implements HandlerEvent {
 
     private boolean checkLuminosityCondition(ScenarioProjection condition, Object sensorData) {
         if (!(sensorData instanceof GenericRecord)) {
-            log.warn("❌ Данные освещенности не являются GenericRecord");
+            log.warn("❌ Данные освещённости не являются GenericRecord");
             return false;
         }
 
         GenericRecord record = (GenericRecord) sensorData;
-        Object lumObj = record.get("luminosity");
+        Object lumObj = record.get(FIELD_LUMINOSITY);
 
         if (!(lumObj instanceof Integer)) {
-            log.warn("❌ Значение освещенности не является целым числом: {}", lumObj);
+            log.warn("❌ Значение освещённости не является целым числом: {}", lumObj);
             return false;
         }
 
         int luminosity = (Integer) lumObj;
-        log.info("Освещенность: {}, условие: {} {}",
+        log.info("Освещённость: {}, условие: {} {}",
                 luminosity, condition.getConditionOperation(), condition.getConditionValue());
         return checkNumericCondition(condition, luminosity);
     }
@@ -246,15 +253,18 @@ public class HandlerEventImpl implements HandlerEvent {
         return checkNumericCondition(condition, value);
     }
 
-    private boolean checkNumericCondition(ScenarioProjection condition, int sensorValue) {
-        Integer conditionValue = condition.getConditionValue();
+    private boolean checkNumericCondition(ScenarioProjection condition, double sensorValue) {
+        Double conditionValue = Optional.ofNullable(condition.getConditionValue())
+                .map(Integer::doubleValue)
+                .orElse(null);
+
         if (conditionValue == null) {
             log.warn("❌ Отсутствует значение условия для числовой проверки");
             return false;
         }
 
         String operation = condition.getConditionOperation();
-        log.info("Операция: {}, сенсор: {}, условие: {}",
+        log.info("Операция: {}, сенсор: {:.1f}, условие: {:.1f}",
                 operation, sensorValue, conditionValue);
 
         boolean result;
@@ -269,7 +279,7 @@ public class HandlerEventImpl implements HandlerEvent {
                 break;
             case "EQUALS":
             case "EQ":
-                result = sensorValue == conditionValue;
+                result = Double.compare(sensorValue, conditionValue) == 0;
                 break;
             case "GREATER_THAN_OR_EQUALS":
             case "GTE":
@@ -284,7 +294,7 @@ public class HandlerEventImpl implements HandlerEvent {
                 return false;
         }
 
-        log.info("Результат: {} {} {} = {}", sensorValue, operation, conditionValue, result);
+        log.info("{:.1f} {} {:.1f} = {}", sensorValue, operation, conditionValue, result);
         return result;
     }
 
@@ -307,18 +317,22 @@ public class HandlerEventImpl implements HandlerEvent {
                 .filter(detail -> detail.getActionType() != null && detail.getActionSensorId() != null)
                 .collect(Collectors.toList());
 
-
         log.info("🎯 Выполняем {} действий для сценария '{}'", actions.size(), scenarioName);
 
+
         for (ScenarioProjection actionDetail : actions) {
-            log.info("🚀 Действие: сенсор={}, тип={}, значение={}",
-                    actionDetail.getActionSensorId(),
-                    actionDetail.getActionType(),
-                    actionDetail.getActionValue());
+            try {
+                log.info("🚀 Действие: сенсор={}, тип={}, значение={}",
+                        actionDetail.getActionSensorId(),
+                        actionDetail.getActionType(),
+                        actionDetail.getActionValue());
 
-
-            DeviceActionProto action = convertToDeviceActionProto(actionDetail);
-            hubRouterClientService.sendDeviceAction(hubId, scenarioName, action);
+                DeviceActionProto action = convertToDeviceActionProto(actionDetail);
+                hubRouterClientService.sendDeviceAction(hubId, scenarioName, action);
+            } catch (Exception e) {
+                log.error("Ошибка при отправке действия для сенсора {} в сценарии '{}': {}",
+                        actionDetail.getActionSensorId(), scenarioName, e.getMessage(), e);
+            }
         }
     }
 
@@ -334,17 +348,22 @@ public class HandlerEventImpl implements HandlerEvent {
     }
 
     private ActionTypeProto convertActionType(String actionType) {
-        switch (actionType.toUpperCase()) {
-            case "ACTIVATE":
-                return ActionTypeProto.ACTIVATE;
-            case "DEACTIVATE":
-                return ActionTypeProto.DEACTIVATE;
-            case "INVERSE":
-                return ActionTypeProto.INVERSE;
-            case "SET_VALUE":
-                return ActionTypeProto.SET_VALUE;
-            default:
-                throw new IllegalArgumentException("Unknown action type: " + actionType);
+        try {
+            switch (actionType.toUpperCase()) {
+                case "ACTIVATE":
+                    return ActionTypeProto.ACTIVATE;
+                case "DEACTIVATE":
+                    return ActionTypeProto.DEACTIVATE;
+                case "INVERSE":
+                    return ActionTypeProto.INVERSE;
+                case "SET_VALUE":
+                    return ActionTypeProto.SET_VALUE;
+                default:
+                    throw new IllegalArgumentException("Unknown action type: " + actionType);
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("Неизвестный тип действия: {}", actionType);
+            throw e;
         }
     }
 }
