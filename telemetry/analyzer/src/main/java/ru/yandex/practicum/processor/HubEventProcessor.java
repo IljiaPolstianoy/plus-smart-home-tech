@@ -1,13 +1,10 @@
 package ru.yandex.practicum.processor;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.kafka.telemetry.event.HubEventAvro;
 import ru.yandex.practicum.model.*;
@@ -21,16 +18,7 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class HubEventProcessor implements Runnable {
-    @Autowired
-    private ConsumerFactory<String, HubEventAvro> hubEventConsumerFactory;
-
-    private KafkaConsumer<String, HubEventAvro> hubEventConsumer;
-
-    @PostConstruct
-    public void init() {
-        this.hubEventConsumer = (KafkaConsumer<String, HubEventAvro>) hubEventConsumerFactory.createConsumer();
-    }
-
+    private final KafkaConsumer<String, HubEventAvro> hubEventConsumer;
     private final ScenarioRepository scenarioRepository;
     private final SensorRepository sensorRepository;
     private final ConditionRepository conditionRepository;

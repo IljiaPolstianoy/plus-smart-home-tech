@@ -1,13 +1,10 @@
 package ru.yandex.practicum.processor;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.handler.HandlerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
@@ -19,15 +16,8 @@ import java.util.Collections;
 @Component
 @RequiredArgsConstructor
 public class SnapshotProcessor implements Runnable {
-    @Autowired
-    private ConsumerFactory<String, SensorsSnapshotAvro> snapshotConsumerFactory;
-
-    private KafkaConsumer<String, SensorsSnapshotAvro> snapshotConsumer;
-
-    @PostConstruct
-    public void init() {
-        this.snapshotConsumer = (KafkaConsumer<String, SensorsSnapshotAvro>) snapshotConsumerFactory.createConsumer();
-    }    private final HandlerEvent handlerEvent;
+    private final KafkaConsumer<String, SensorsSnapshotAvro> snapshotConsumer;
+    private final HandlerEvent handlerEvent;
     private volatile boolean running = true;
     private Thread processorThread;
 
