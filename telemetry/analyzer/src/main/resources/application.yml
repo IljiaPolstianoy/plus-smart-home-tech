@@ -35,6 +35,8 @@ grpc:
       negotiation-type: plaintext
       enable-keep-alive: true
       keep-alive-without-calls: true
+  server:
+    port: 9094
 
 logging:
   level:
