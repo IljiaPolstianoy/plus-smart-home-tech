@@ -1,3 +1,4 @@
+/*
 package ru.practicum.collector;
 
 import jakarta.validation.Valid;
@@ -26,3 +27,4 @@ public class CollectorController {
         return sendKafka.send(event);
     }
 }
+*/
