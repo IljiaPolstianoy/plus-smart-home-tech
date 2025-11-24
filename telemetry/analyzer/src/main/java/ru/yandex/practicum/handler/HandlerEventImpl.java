@@ -5,7 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
-import ru.yandex.practicum.kafka.telemetry.event.*;
+import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
+import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 import ru.yandex.practicum.model.ScenarioProjection;
 import ru.yandex.practicum.processor.HubRouterClientService;
 import ru.yandex.practicum.repository.ScenarioRepository;
@@ -26,6 +27,10 @@ public class HandlerEventImpl implements HandlerEvent {
         // === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ GITHUB ===
         System.out.println("=== GITHUB_DEBUG_HANDLER_START ===");
         System.out.println("🎯 Обработка снапшота для хаба: " + hubId);
+
+        if ("hub-1".equals(hubId)) {
+            checkTemperatureScenario(snapshotAvro, hubId);
+        }
 
         // Специальная проверка для температурного сценария
         if ("hub-1".equals(hubId)) {
@@ -207,32 +212,28 @@ public class HandlerEventImpl implements HandlerEvent {
 
         switch (condition.getConditionType()) {
             case "TEMPERATURE":
-                System.out.println("=== GITHUB_DEBUG_TEMPERATURE ===");
-                System.out.println("   Проверка температурного условия для сенсора: " + condition.getSensorId());
+                System.out.println("=== GITHUB_DEBUG_TEMPERATURE_CONDITION ===");
+                System.out.println("   Проверка температурного условия");
+                System.out.println("   Сенсор: " + condition.getSensorId());
+                System.out.println("   Операция: " + condition.getConditionOperation());
+                System.out.println("   Ожидаемое значение: " + condition.getConditionValue());
 
                 if (sensorData instanceof org.apache.avro.generic.GenericRecord) {
                     org.apache.avro.generic.GenericRecord record = (org.apache.avro.generic.GenericRecord) sensorData;
 
-                    // Выводим всю схему и все поля для отладки
-                    System.out.println("   Схема Avro: " + record.getSchema().getFullName());
-                    System.out.println("   Все поля в записи:");
-                    for (org.apache.avro.Schema.Field field : record.getSchema().getFields()) {
-                        Object value = record.get(field.name());
-                        System.out.println("     - " + field.name() + ": " + value +
-                                " (тип: " + (value != null ? value.getClass().getSimpleName() : "null") + ")");
-                    }
-
-                    // Пробуем разные возможные названия полей для температуры
-                    String[] possibleTempFields = {"temperatureC", "temperature", "temp", "value"};
+                    // Пробуем все возможные поля для температуры
+                    String[] tempFields = {"temperatureC", "temperature", "temp", "value"};
                     Integer temperature = null;
+                    String foundField = null;
 
-                    for (String fieldName : possibleTempFields) {
+                    for (String fieldName : tempFields) {
                         if (record.hasField(fieldName)) {
                             Object tempObj = record.get(fieldName);
-                            System.out.println("   Поле '" + fieldName + "': " + tempObj);
+                            System.out.println("   🔍 Поле '" + fieldName + "': " + tempObj);
 
                             if (tempObj instanceof Number) {
                                 temperature = ((Number) tempObj).intValue();
+                                foundField = fieldName;
                                 System.out.println("   ✅ Найдена температура: " + temperature + "°C в поле '" + fieldName + "'");
                                 break;
                             }
@@ -247,14 +248,11 @@ public class HandlerEventImpl implements HandlerEvent {
                         System.out.println("   📊 Результат проверки: " + result);
                         return result;
                     } else {
-                        System.out.println("   ❌ Температура не найдена в данных сенсора");
+                        System.out.println("   ❌ Температура не найдена в данных");
                         System.out.println("   ❌ Доступные поля: " + record.getSchema().getFields().stream()
                                 .map(org.apache.avro.Schema.Field::name)
                                 .collect(Collectors.toList()));
                     }
-                } else {
-                    System.out.println("   ❌ Данные сенсора не являются GenericRecord, тип: " +
-                            (sensorData != null ? sensorData.getClass().getName() : "null"));
                 }
                 break;
 
@@ -440,6 +438,54 @@ public class HandlerEventImpl implements HandlerEvent {
                 return ActionTypeProto.SET_VALUE;
             default:
                 throw new IllegalArgumentException("Unknown action type: " + actionType);
+        }
+    }
+
+    private void checkTemperatureScenario(SensorsSnapshotAvro snapshotAvro, String hubId) {
+        System.out.println("=== GITHUB_DEBUG_TEMPERATURE_SCENARIO_CHECK ===");
+
+        // 1. Проверяем наличие температурного сенсора в снапшоте
+        String tempSensorId = "2b0bb4c1-7cf2-475a-a17c-e5cb6239d6e5";
+        boolean hasTempSensor = snapshotAvro.getSensorsState().containsKey(tempSensorId);
+        System.out.println("📊 Температурный сенсор " + tempSensorId + " в снапшоте: " + hasTempSensor);
+
+        if (hasTempSensor) {
+            var tempSensorState = snapshotAvro.getSensorsState().get(tempSensorId);
+            System.out.println("🌡️ Данные температурного сенсора: " + tempSensorState.getData());
+            System.out.println("📋 Тип данных: " + (tempSensorState.getData() != null ?
+                    tempSensorState.getData().getClass().getName() : "null"));
+
+            // Детальный анализ данных
+            if (tempSensorState.getData() instanceof org.apache.avro.generic.GenericRecord) {
+                org.apache.avro.generic.GenericRecord record =
+                        (org.apache.avro.generic.GenericRecord) tempSensorState.getData();
+                System.out.println("🔍 Схема Avro: " + record.getSchema().getFullName());
+                System.out.println("📝 Все поля температурного сенсора:");
+                for (org.apache.avro.Schema.Field field : record.getSchema().getFields()) {
+                    Object value = record.get(field.name());
+                    System.out.println("   - " + field.name() + ": " + value +
+                            " (тип: " + (value != null ? value.getClass().getSimpleName() : "null") + ")");
+                }
+            }
+        }
+
+        // 2. Проверяем сценарий в БД
+        final List<ScenarioProjection> scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
+        var tempScenarios = scenarios.stream()
+                .filter(s -> "Регулировка температуры (спальня)".equals(s.getScenarioName()))
+                .collect(Collectors.toList());
+
+        System.out.println("📋 Найдено температурных сценариев: " + tempScenarios.size());
+        for (var tempScenario : tempScenarios) {
+            System.out.println("🎯 Детали сценария 'Регулировка температуры (спальня)':");
+            System.out.println("   ID: " + tempScenario.getScenarioId());
+            System.out.println("   Сенсор условия: " + tempScenario.getSensorId());
+            System.out.println("   Тип условия: " + tempScenario.getConditionType());
+            System.out.println("   Операция: " + tempScenario.getConditionOperation());
+            System.out.println("   Значение: " + tempScenario.getConditionValue());
+            System.out.println("   Сенсор действия: " + tempScenario.getActionSensorId());
+            System.out.println("   Тип действия: " + tempScenario.getActionType());
+            System.out.println("   Значение действия: " + tempScenario.getActionValue());
         }
     }
 }
