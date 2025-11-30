@@ -1,11 +1,11 @@
 package ru.practicum.collector;
 
-import ru.practicum.collector.model.hubevent.HubEvent;
-import ru.practicum.collector.model.sensorevent.SensorEvent;
+import ru.yandex.practicum.grpc.telemetry.event.HubEventProto;
+import ru.yandex.practicum.grpc.telemetry.event.SensorEventProto;
 
 public interface SendKafka {
 
-    boolean send(SensorEvent event);
+    boolean send(SensorEventProto event);
 
-    boolean send(HubEvent event);
+    boolean send(HubEventProto event);
 }

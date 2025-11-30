@@ -46,6 +46,9 @@
                 <configuration>
                     <protocVersion>${protobuf.version}</protocVersion>
 
+                    <sourceDirectories>${project.basedir}/src/main/protobuf/</sourceDirectories>
+                    <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+
                     <binaryMavenPlugins>
                         <binaryMavenPlugin>
                             <groupId>io.grpc</groupId>
