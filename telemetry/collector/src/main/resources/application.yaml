@@ -1,3 +1,12 @@
-grpc:
-  server:
-    port: 9090
+spring:
+  config:
+    import: "optional:configserver:http://localhost:8888" # Config Server connection
+  cloud:
+    config:
+      fail-fast: true # Correct property path
+      uri: http://localhost:8888 # Alternative location for server address
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+  application:
+    name: analyzer
