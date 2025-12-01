@@ -1,12 +1,15 @@
 spring:
+  application:
+    name: collector
   config:
-    import: "optional:configserver:http://localhost:8888" # Config Server connection
+    import: "configserver:"
   cloud:
     config:
-      fail-fast: true # Correct property path
-      uri: http://localhost:8888 # Alternative location for server address
-      retry:
-        useRandomPolicy: true
-        max-interval: 6000
-  application:
-    name: analyzer
+      discovery:
+        enabled: true
+        serviceId: config-server
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
