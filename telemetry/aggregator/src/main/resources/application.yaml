@@ -9,4 +9,4 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
   application:
-    name: analyzer
+    name: aggregator
