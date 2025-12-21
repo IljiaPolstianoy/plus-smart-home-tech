@@ -8,7 +8,7 @@ import ru.yandex.practicum.grpc.telemetry.event.ActionTypeProto;
 import ru.yandex.practicum.grpc.telemetry.event.DeviceActionProto;
 import ru.yandex.practicum.kafka.telemetry.event.SensorStateAvro;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
-import ru.yandex.practicum.model.ScenarioProjection;
+import ru.yandex.practicum.ScenarioProjection;
 import ru.yandex.practicum.processor.HubRouterClientService;
 import ru.yandex.practicum.repository.ScenarioRepository;
 

@@ -1,4 +1,4 @@
-package ru.yandex.practicum.model;
+package ru.yandex.practicum;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

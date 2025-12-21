@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
-import ru.yandex.practicum.model.ScenarioCondition;
-import ru.yandex.practicum.model.ScenarioConditionId;
+import ru.yandex.practicum.ScenarioCondition;
+import ru.yandex.practicum.ScenarioConditionId;
 
 public interface ScenarioConditionRepository extends JpaRepository<ScenarioCondition, ScenarioConditionId> {  // Исправь на ScenarioConditionId
 
