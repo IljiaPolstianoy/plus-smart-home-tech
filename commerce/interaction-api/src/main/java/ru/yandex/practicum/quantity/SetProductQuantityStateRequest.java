@@ -1,4 +1,4 @@
-package ru.yandex.practicum;
+package ru.yandex.practicum.quantity;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

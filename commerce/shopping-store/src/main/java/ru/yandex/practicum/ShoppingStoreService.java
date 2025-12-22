@@ -1,6 +1,9 @@
 package ru.yandex.practicum;
 
 import org.springframework.data.domain.Page;
+import ru.yandex.practicum.product.ProductCategory;
+import ru.yandex.practicum.product.ProductDto;
+import ru.yandex.practicum.quantity.SetProductQuantityStateRequest;
 
 public interface ShoppingStoreService {
 

@@ -1,4 +1,4 @@
-package ru.yandex.practicum;
+package ru.yandex.practicum.model;
 
 public interface ScenarioProjection {
     Long getScenarioId();

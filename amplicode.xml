@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AmplicodePersistenceUnitSettings">
+    <persistence-units>
+      <persistence-unit moduleName="analyzer" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="shopping-store" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="interaction-api" name="Default" />
+    </persistence-units>
+  </component>
+</project>

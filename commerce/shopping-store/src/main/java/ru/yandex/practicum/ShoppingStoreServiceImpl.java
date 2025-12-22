@@ -6,6 +6,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import ru.yandex.practicum.product.ProductCategory;
+import ru.yandex.practicum.product.ProductDto;
+import ru.yandex.practicum.product.ProductState;
+import ru.yandex.practicum.quantity.SetProductQuantityStateRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +37,10 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public boolean deleteProduct(String productId) {
-        return shoppingStoreRepository.deleteByProductId(productId);
+        ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(productId);
+        productDto.setProductState(ProductState.DEACTIVATE);
+        shoppingStoreRepository.save(productDto);
+        return true;
     }
 
     @Override

@@ -1,4 +1,4 @@
-package ru.yandex.practicum;
+package ru.yandex.practicum.model;
 
 import java.io.Serializable;
 import java.util.Objects;

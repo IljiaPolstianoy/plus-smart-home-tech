@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.product.ProductCategory;
+import ru.yandex.practicum.product.ProductDto;
+import ru.yandex.practicum.quantity.SetProductQuantityStateRequest;
 
 @RestController
 @RequestMapping("/api/v1/shopping-store")
