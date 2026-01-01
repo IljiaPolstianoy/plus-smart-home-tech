@@ -18,9 +18,9 @@ public class ShoppingCartDto {
     private String shoppingCartId;
 
     @NotNull
-    private List<ProductInCat> shoppingCartItems;
+    private List<ProductInCat> products;
 
     public boolean addProduct(ProductInCat productInCat) {
-        return shoppingCartItems.add(productInCat);
+        return products.add(productInCat);
     }
 }

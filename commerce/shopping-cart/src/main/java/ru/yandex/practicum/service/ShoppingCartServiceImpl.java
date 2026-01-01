@@ -39,7 +39,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         }
         return Optional.of(ShoppingCartDto.builder()
                 .shoppingCartId(shoppingCart.getShoppingCartId())
-                .shoppingCartItems(products)
+                .products(products)
                 .build());
     }
 

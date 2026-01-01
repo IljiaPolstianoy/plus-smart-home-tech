@@ -18,7 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ShoppingStoreServiceImpl implements ShoppingStoreService {
     private final ShoppingStoreRepository shoppingStoreRepository;
-    private List<String> sortStrings;
 
     @Override
     public Page<ProductDto> getProducts(Pageable pageable, ProductCategory category) {
