@@ -1,7 +1,7 @@
 package ru.yandex.practicum.storage;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import ru.yandex.practicum.shopping.ShoppingCartAndProduct;
+import ru.yandex.practicum.model.shopping.ShoppingCartAndProduct;
 
 import java.util.List;
 import java.util.Optional;

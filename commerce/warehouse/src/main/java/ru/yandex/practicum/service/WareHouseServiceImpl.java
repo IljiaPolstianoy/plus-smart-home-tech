@@ -1,16 +1,15 @@
 package ru.yandex.practicum.service;
 
 import jakarta.persistence.PersistenceException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.error.NoSpecifiedProductInWarehouseException;
-import ru.yandex.practicum.error.ProductInShoppingCartLowQuantityInWarehouseException;
-import ru.yandex.practicum.error.SpecifiedProductAlreadyInWarehouseException;
-import ru.yandex.practicum.shopping.ProductInCat;
-import ru.yandex.practicum.shopping.ShoppingCartDto;
+import ru.yandex.practicum.model.error.NoSpecifiedProductInWarehouseException;
+import ru.yandex.practicum.model.error.ProductInShoppingCartLowQuantityInWarehouseException;
+import ru.yandex.practicum.model.error.SpecifiedProductAlreadyInWarehouseException;
+import ru.yandex.practicum.model.shopping.ProductInCat;
+import ru.yandex.practicum.model.shopping.ShoppingCartDto;
+import ru.yandex.practicum.model.warehous.*;
 import ru.yandex.practicum.storage.ProductQuantityRepository;
 import ru.yandex.practicum.storage.WareHouseRepository;
-import ru.yandex.practicum.warehous.*;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -34,7 +33,7 @@ public class WareHouseServiceImpl implements WareHouseService {
             throw new NoSpecifiedProductInWarehouseException(
                     "Продукт с ID " + productId + " не найден",
                     "Указанный продукт отсутствует на складе. Проверьте ID.",
-                    HttpStatus.BAD_REQUEST
+                    "400 BAD_REQUEST"
             );
         }
 
@@ -79,7 +78,7 @@ public class WareHouseServiceImpl implements WareHouseService {
             throw new SpecifiedProductAlreadyInWarehouseException(
                     "Продукт с ID " + newProductInWarehouseRequest.getProductId() + " уже находится на складе",
                     "Данный продукт уже зарегистрирован на складе. Проверьте данные.",
-                    HttpStatus.BAD_REQUEST
+                    "400 BAD_REQUEST"
             );
         }
         return true;
@@ -97,7 +96,16 @@ public class WareHouseServiceImpl implements WareHouseService {
             final Optional<ProductQuantity> productQuantityOptional = productQuantityRepository
                     .findByProductQuantityId(productInCat.getProductId());
             final ProductQuantity productQuantity = getProductQuantityForCheck(productInCat, productQuantityOptional);
-            ProductsInWarehouse product = productQuantity.getProductsInWarehouse();
+
+            if(productQuantity.getQuantity() < productInCat.getQuantity()) {
+                throw new ProductInShoppingCartLowQuantityInWarehouseException("Товара с id "
+                        + productInCat.getProductId() + " не достаточно на складе.",
+                        "Пожалуйста, уменьшите количество товара в корзине.",
+                        "400 BAD_REQUEST"
+                );
+            }
+
+            final ProductsInWarehouse product = productQuantity.getProductsInWarehouse();
 
             BigDecimal weightForThisProduct = product.getWeight()
                     .multiply(BigDecimal.valueOf(productQuantity.getQuantity()));
@@ -135,8 +143,8 @@ public class WareHouseServiceImpl implements WareHouseService {
         } else {
             throw new ProductInShoppingCartLowQuantityInWarehouseException(
                     "Недостаточно товара на складе",
-                    "Товар с ID " + productInCat.getProductId() + " закончился или его количество меньше, чем вы указали в корзине.",
-                    HttpStatus.BAD_REQUEST
+                    "Выбранный товар закончился или его количество меньше, чем вы указали в корзине.",
+                    "400 BAD_REQUEST"
             );
         }
     }

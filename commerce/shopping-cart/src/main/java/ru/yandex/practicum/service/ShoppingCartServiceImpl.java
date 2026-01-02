@@ -1,11 +1,14 @@
 package ru.yandex.practicum.service;
 
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.error.ErrorWhenDeletingAnItemFromTheShoppingCart;
 import ru.yandex.practicum.error.ShoppingCartDeactivate;
-import ru.yandex.practicum.product.ProductDto;
-import ru.yandex.practicum.shopping.*;
+import ru.yandex.practicum.feign.WarehouseFeignClient;
+import ru.yandex.practicum.model.product.ProductDto;
+import ru.yandex.practicum.model.shopping.*;
 import ru.yandex.practicum.storage.ProductRepository;
 import ru.yandex.practicum.storage.ShoppingCartAndProductRepository;
 import ru.yandex.practicum.storage.ShoppingCartRepository;
@@ -15,12 +18,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     private final ShoppingCartRepository shoppingCartRepository;
     private final ShoppingCartAndProductRepository shoppingCartAndProductRepository;
     private final ProductRepository productRepository;
+    private final WarehouseFeignClient warehouseFeignClient;
 
     @Override
     public Optional<ShoppingCartDto> findShoppingCart(final String userName) {
@@ -46,16 +50,20 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public Optional<ShoppingCartDto> addProductsInShoppingCart(String userName, ProductInCat productInCat) {
 
-        final ShoppingCart shoppingCartDto = getShoppingCart(userName);
+        final ShoppingCart shoppingCart = getShoppingCart(userName);
 
-        if (shoppingCartDto.getShoppingCartState().equals(ShoppingCartState.DELIVERED)) {
-            throw new ShoppingCartDeactivate("Корзина с id " + shoppingCartDto.getShoppingCartId() + " неактивна");
+        if (shoppingCart.getShoppingCartState().equals(ShoppingCartState.DELIVERED)) {
+            throw new ShoppingCartDeactivate("Корзина с id " + shoppingCart.getShoppingCartId() + " неактивна");
         }
+
+        final ShoppingCartDto shoppingCartDtoForCheckQuantity = findShoppingCart(userName).get();
+        shoppingCartDtoForCheckQuantity.addProduct(productInCat);
+        warehouseFeignClient.checkQuantity(shoppingCartDtoForCheckQuantity);
 
         final ProductDto productDto = productRepository.findByProductId(productInCat.getProductId()).orElse(null);
 
         final ShoppingCartAndProduct shoppingCartAndProductNew = ShoppingCartAndProduct.builder()
-                .shoppingCart(shoppingCartDto)
+                .shoppingCart(shoppingCart)
                 .product(productDto)
                 .quantity(productInCat.getQuantity())
                 .build();

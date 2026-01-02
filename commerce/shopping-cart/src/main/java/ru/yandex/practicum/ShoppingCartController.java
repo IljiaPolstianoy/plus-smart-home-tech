@@ -5,9 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.feign.ShoppingCartFeignClient;
 import ru.yandex.practicum.service.ShoppingCartService;
-import ru.yandex.practicum.shopping.ProductInCat;
-import ru.yandex.practicum.shopping.ShoppingCartDto;
+import ru.yandex.practicum.model.shopping.ProductInCat;
+import ru.yandex.practicum.model.shopping.ShoppingCartDto;
 
 import java.util.Optional;
 
@@ -15,7 +16,7 @@ import java.util.Optional;
 @RequestMapping("/api/v1/shopping-cart")
 @RequiredArgsConstructor
 @Validated
-public class ShoppingCartController {
+public class ShoppingCartController implements ShoppingCartFeignClient {
 
     private final ShoppingCartService shoppingCartService;
 
@@ -44,7 +45,7 @@ public class ShoppingCartController {
         return shoppingCartService.removeProductsInShoppingCart(userName, productName);
     }
 
-    @PostMapping("change-quantity")
+    @PostMapping("/change-quantity")
     public Optional<ShoppingCartDto> changeQuantityInShoppingCart(
             @RequestParam @NotBlank String userName,
             @RequestBody @Valid final ProductInCat productInCat

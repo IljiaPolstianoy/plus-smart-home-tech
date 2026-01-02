@@ -1,7 +1,7 @@
 package ru.yandex.practicum.storage;
 
 import org.springframework.data.repository.Repository;
-import ru.yandex.practicum.product.ProductDto;
+import ru.yandex.practicum.model.product.ProductDto;
 
 import java.util.Optional;
 

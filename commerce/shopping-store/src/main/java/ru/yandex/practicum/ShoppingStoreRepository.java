@@ -3,8 +3,10 @@ package ru.yandex.practicum;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import ru.yandex.practicum.product.ProductCategory;
-import ru.yandex.practicum.product.ProductDto;
+import ru.yandex.practicum.model.product.ProductCategory;
+import ru.yandex.practicum.model.product.ProductDto;
+
+import java.util.Optional;
 
 public interface ShoppingStoreRepository extends JpaRepository<ProductDto, Long> {
 
@@ -12,5 +14,5 @@ public interface ShoppingStoreRepository extends JpaRepository<ProductDto, Long>
 
     boolean deleteByProductId(String productId);
 
-    ProductDto getProductDtoByProductId(String productId);
+    Optional<ProductDto> getProductDtoByProductId(String productId);
 }

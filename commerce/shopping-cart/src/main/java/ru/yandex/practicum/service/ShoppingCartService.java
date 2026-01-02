@@ -1,7 +1,7 @@
 package ru.yandex.practicum.service;
 
-import ru.yandex.practicum.shopping.ProductInCat;
-import ru.yandex.practicum.shopping.ShoppingCartDto;
+import ru.yandex.practicum.model.shopping.ProductInCat;
+import ru.yandex.practicum.model.shopping.ShoppingCartDto;
 
 import java.util.Optional;
 

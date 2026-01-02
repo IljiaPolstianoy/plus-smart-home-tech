@@ -6,10 +6,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import ru.yandex.practicum.product.ProductCategory;
-import ru.yandex.practicum.product.ProductDto;
-import ru.yandex.practicum.product.ProductState;
-import ru.yandex.practicum.quantity.SetProductQuantityStateRequest;
+import ru.yandex.practicum.model.Pageable;
+import ru.yandex.practicum.model.error.ProductNotFoundException;
+import ru.yandex.practicum.model.product.ProductCategory;
+import ru.yandex.practicum.model.product.ProductDto;
+import ru.yandex.practicum.model.product.ProductState;
+import ru.yandex.practicum.model.quantity.SetProductQuantityStateRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +38,11 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public boolean deleteProduct(String productId) {
-        ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(productId);
+        ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(productId).orElseThrow(() -> new ProductNotFoundException(
+                "Товар с ID '" + productId + "' не найден",
+                "Искомый товар отсутствует в системе. Проверьте ID.",
+                "404 NOT_FOUND"
+        ));
         productDto.setProductState(ProductState.DEACTIVATE);
         shoppingStoreRepository.save(productDto);
         return true;
@@ -44,7 +50,12 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public boolean updateQuantityStateProduct(SetProductQuantityStateRequest setProductQuantityStateRequest) {
-        final ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(setProductQuantityStateRequest.getProductId());
+        final ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(setProductQuantityStateRequest.getProductId())
+                .orElseThrow(() -> new ProductNotFoundException(
+                        "Товар с ID '" + setProductQuantityStateRequest.getProductId() + "' не найден",
+                        "Искомый товар отсутствует в системе. Проверьте ID.",
+                        "404 NOT_FOUND"
+                ));
         productDto.setQuantityState(setProductQuantityStateRequest.getQuantityState());
         shoppingStoreRepository.save(productDto);
         return true;
@@ -52,7 +63,11 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
 
     @Override
     public ProductDto getProduct(String productId) {
-        return shoppingStoreRepository.getProductDtoByProductId(productId);
+        return shoppingStoreRepository.getProductDtoByProductId(productId).orElseThrow(() -> new ProductNotFoundException(
+                "Товар с ID '" + productId + "' не найден",
+                "Искомый товар отсутствует в системе. Проверьте ID.",
+                "404 NOT_FOUND"
+        ));
     }
 
     private org.springframework.data.domain.Pageable pageableConverter(Pageable customPageable) {

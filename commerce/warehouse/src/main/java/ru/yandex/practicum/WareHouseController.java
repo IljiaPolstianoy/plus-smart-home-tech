@@ -3,18 +3,19 @@ package ru.yandex.practicum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.feign.WarehouseFeignClient;
 import ru.yandex.practicum.service.WareHouseService;
-import ru.yandex.practicum.shopping.ShoppingCartDto;
-import ru.yandex.practicum.warehous.AddProductToWarehouseRequest;
-import ru.yandex.practicum.warehous.AddressDto;
-import ru.yandex.practicum.warehous.BookedProductsDto;
-import ru.yandex.practicum.warehous.NewProductInWarehouseRequest;
+import ru.yandex.practicum.model.shopping.ShoppingCartDto;
+import ru.yandex.practicum.model.warehous.AddProductToWarehouseRequest;
+import ru.yandex.practicum.model.warehous.AddressDto;
+import ru.yandex.practicum.model.warehous.BookedProductsDto;
+import ru.yandex.practicum.model.warehous.NewProductInWarehouseRequest;
 
 @RestController
 @RequestMapping("/api/v1/warehouse")
 @RequiredArgsConstructor
 @Validated
-public class WareHouseController {
+public class WareHouseController implements WarehouseFeignClient {
 
     private final WareHouseService wareHouseService;
 
