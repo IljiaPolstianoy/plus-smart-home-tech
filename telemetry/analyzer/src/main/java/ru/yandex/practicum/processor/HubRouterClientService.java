@@ -16,219 +16,96 @@ import ru.yandex.practicum.grpc.telemetry.hubrouter.HubRouterControllerGrpc;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class HubRouterClientService {
 
     @GrpcClient("hub-router")
     private HubRouterControllerGrpc.HubRouterControllerBlockingStub hubRouterClient;
 
-    @Value("${grpc.client.hub-router.address:not-set}")
+    @Value("${grpc.client.hub-router.address:static://localhost:59090}")
     private String grpcAddress;
 
-    private boolean grpcAvailable = false;
-    private int retryCount = 0;
-    private final int MAX_RETRIES = 3;
+    private volatile boolean connectionTested = false;
+    private volatile boolean grpcAvailable = false;
 
-    @PostConstruct
-    public void init() {
-        log.info("🔧 Инициализация gRPC клиента для Hub Router");
-        log.info("📡 Адрес Hub Router: {}", grpcAddress);
-
-        testGrpcConnection();
-    }
-
-    private void testGrpcConnection() {
-        log.debug("🔍 Тестовое подключение к Hub Router...");
+    public void sendDeviceAction(String hubId, String scenarioName, DeviceActionProto action) {
+        log.info("🎯 ОТПРАВКА КОМАНДЫ: hub={}, scenario={}, sensor={}, type={}",
+                hubId, scenarioName, action.getSensorId(), action.getType());
 
         try {
-            // Создаем тестовый DeviceActionProto
+            // Если еще не тестировали подключение, делаем это сейчас
+            if (!connectionTested) {
+                testConnection();
+            }
+
+            if (!grpcAvailable) {
+                log.warn("⚠️ Hub Router недоступен, пропускаем команду");
+                return;
+            }
+
+            DeviceActionRequest request = DeviceActionRequest.newBuilder()
+                    .setHubId(hubId)
+                    .setScenarioName(scenarioName)
+                    .setAction(action)
+                    .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
+                            .setSeconds(Instant.now().getEpochSecond())
+                            .build())
+                    .build();
+
+            log.debug("📨 Отправка gRPC запроса...");
+
+            var response = hubRouterClient
+                    .withDeadlineAfter(3, TimeUnit.SECONDS)
+                    .handleDeviceAction(request);
+
+            log.info("✅ Команда отправлена успешно");
+            log.debug("Ответ: {}", response);
+
+        } catch (StatusRuntimeException e) {
+            grpcAvailable = false;
+            log.error("❌ gRPC ошибка: {} - {}", e.getStatus().getCode(), e.getMessage());
+
+        } catch (Exception e) {
+            grpcAvailable = false;
+            log.error("❌ Ошибка отправки команды: {}", e.getMessage());
+        }
+    }
+
+    private synchronized void testConnection() {
+        if (connectionTested) return;
+
+        log.info("🔌 Тестирование подключения к Hub Router: {}", grpcAddress);
+
+        try {
+            // Простой тест - пытаемся вызвать метод
             DeviceActionProto testAction = DeviceActionProto.newBuilder()
-                    .setSensorId("test-sensor-id")
+                    .setSensorId("test")
                     .setType(ActionTypeProto.ACTIVATE)
                     .build();
 
             DeviceActionRequest testRequest = DeviceActionRequest.newBuilder()
-                    .setHubId("test-hub-id")
-                    .setScenarioName("test-scenario")
+                    .setHubId("test")
+                    .setScenarioName("test")
                     .setAction(testAction)
                     .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
                             .setSeconds(Instant.now().getEpochSecond())
                             .build())
                     .build();
 
-            // Пробуем отправить с коротким таймаутом - ВЫЗЫВАЕМ НАПРЯМУЮ, а не через sendDeviceAction
-            try {
-                hubRouterClient
-                        .withDeadlineAfter(1, TimeUnit.SECONDS)
-                        .handleDeviceAction(testRequest);
+            hubRouterClient
+                    .withDeadlineAfter(2, TimeUnit.SECONDS)
+                    .handleDeviceAction(testRequest);
 
-                grpcAvailable = true;
-                retryCount = 0;
-                log.info("✅ Hub Router доступен по адресу: {}", grpcAddress);
-
-            } catch (StatusRuntimeException e) {
-                // ... обработка ошибок
-            }
+            grpcAvailable = true;
+            log.info("✅ Hub Router доступен");
 
         } catch (Exception e) {
             grpcAvailable = false;
             log.warn("⚠️ Hub Router недоступен: {}", e.getMessage());
-        }
-    }
-
-    public void sendDeviceAction(String hubId, String scenarioName, DeviceActionProto action) {
-        log.info("📤 === НАЧАЛО ОТПРАВКИ gRPC ===");
-        log.info("📍 Параметры: hub={}, scenario={}, sensor={}, type={}, hasValue={}",
-                hubId, scenarioName, action.getSensorId(), action.getType(), action.hasValue());
-
-        try {
-            // Проверяем доступность
-            if (!grpcAvailable && retryCount >= MAX_RETRIES) {
-                log.error("🚫 ПРЕРЫВАЕМ: gRPC недоступен после {} попыток", MAX_RETRIES);
-                return;
-            }
-
-            if (!grpcAvailable) {
-                log.warn("gRPC недоступен, проверяем повторно...");
-                testGrpcConnection();
-                if (!grpcAvailable) {
-                    log.error("🚫 Hub Router все еще недоступен");
-                    return;
-                }
-            }
-
-            log.info("🚀 СОЗДАНИЕ gRPC ЗАПРОСА...");
-
-            // Создаем запрос напрямую из полученного proto
-            DeviceActionRequest request = DeviceActionRequest.newBuilder()
-                    .setHubId(hubId)
-                    .setScenarioName(scenarioName)
-                    .setAction(action)  // Используем переданный proto
-                    .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
-                            .setSeconds(Instant.now().getEpochSecond())
-                            .setNanos(Instant.now().getNano())
-                            .build())
-                    .build();
-
-            log.debug("📝 Сформирован запрос:\n" +
-                            "  Hub ID: {}\n" +
-                            "  Scenario: {}\n" +
-                            "  Sensor: {}\n" +
-                            "  Action Type: {}\n" +
-                            "  Value: {}",
-                    hubId, scenarioName, action.getSensorId(), action.getType(),
-                    action.hasValue() ? action.getValue() : "null");
-
-            try {
-                log.info("🔄 ВЫЗОВ hubRouterClient.handleDeviceAction()...");
-
-                var startTime = System.currentTimeMillis();
-
-                var response = hubRouterClient
-                        .withDeadlineAfter(5, TimeUnit.SECONDS)
-                        .handleDeviceAction(request);
-
-                var duration = System.currentTimeMillis() - startTime;
-
-                grpcAvailable = true;
-                retryCount = 0;
-
-                log.info("✅ УСПЕХ! gRPC запрос обработан за {} мс", duration);
-                log.debug("Полный ответ: {}", response);
-
-                System.out.println("=== GITHUB_DEBUG_GRPC_SUCCESS ===");
-                System.out.println("✅ gRPC ЗАПРОС УСПЕШЕН!");
-                System.out.println("   Hub: " + hubId);
-                System.out.println("   Scenario: " + scenarioName);
-                System.out.println("   Время: " + duration + " мс");
-
-            } catch (StatusRuntimeException e) {
-                retryCount++;
-                grpcAvailable = false;
-
-                log.error("❌ gRpc ОШИБКА: {}", e.getStatus().getCode());
-                log.error("📋 Описание: {}", e.getStatus().getDescription());
-
-                System.out.println("=== GITHUB_DEBUG_GRPC_ERROR ===");
-                System.out.println("❌ gRPC ОШИБКА: " + e.getStatus().getCode());
-                System.out.println("   Описание: " + e.getStatus().getDescription());
-
-                if (e.getStatus().getCode() == Status.Code.UNAVAILABLE) {
-                    log.error("🔌 СЕРВИС НЕДОСТУПЕН: {}", grpcAddress);
-                } else if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
-                    log.error("⏰ ТАЙМАУТ: Запрос превысил 5 секунд");
-                } else {
-                    log.error("❌ ОШИБКА gRPC: {}", e.getStatus().getCode());
-                }
-
-            } catch (Exception e) {
-                retryCount++;
-                grpcAvailable = false;
-
-                log.error("❌ НЕОЖИДАННАЯ ОШИБКА: {} - {}",
-                        e.getClass().getSimpleName(), e.getMessage());
-
-                System.out.println("=== GITHUB_DEBUG_GRPC_UNEXPECTED ===");
-                System.out.println("❌ НЕОЖИДАННАЯ ОШИБКА: " + e.getClass().getSimpleName());
-                System.out.println("   Сообщение: " + e.getMessage());
-            }
-
-        } catch (Exception e) {
-            log.error("❌ КРИТИЧЕСКАЯ ОШИБКА: {} - {}",
-                    e.getClass().getSimpleName(), e.getMessage());
-
-            System.out.println("=== GITHUB_DEBUG_GRPC_CRITICAL ===");
-            System.out.println("❌ КРИТИЧЕСКАЯ ОШИБКА: " + e.getClass().getSimpleName());
-            System.out.println("   Сообщение: " + e.getMessage());
+            log.info("ℹ️ Команды будут пропускаться до восстановления связи");
         }
 
-        log.info("🏁 === ЗАВЕРШЕНИЕ ОТПРАВКИ gRPC ===");
-    }
-
-    /**
-     * Вспомогательный метод для удобства
-     */
-    public void sendDeviceAction(String hubId, String scenarioName,
-                                 String sensorId, ActionTypeProto actionType,
-                                 Integer value) {
-        log.info("📤 Вызов sendDeviceAction с отдельными параметрами");
-
-        try {
-            DeviceActionProto.Builder actionBuilder = DeviceActionProto.newBuilder()
-                    .setSensorId(sensorId)
-                    .setType(actionType);
-
-            if (value != null) {
-                actionBuilder.setValue(value);
-            }
-
-            DeviceActionProto action = actionBuilder.build();
-
-            // Вызываем основной метод
-            sendDeviceAction(hubId, scenarioName, action);
-
-        } catch (Exception e) {
-            log.error("❌ Ошибка создания DeviceActionProto: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Вспомогательный метод без значения
-     */
-    public void sendDeviceAction(String hubId, String scenarioName,
-                                 String sensorId, ActionTypeProto actionType) {
-        sendDeviceAction(hubId, scenarioName, sensorId, actionType, null);
-    }
-
-    public boolean isGrpcAvailable() {
-        return grpcAvailable;
-    }
-
-    public String getGrpcStatus() {
-        return String.format("gRPC: %s (адрес: %s, попытки: %d/%d)",
-                grpcAvailable ? "ДОСТУПЕН" : "НЕДОСТУПЕН",
-                grpcAddress, retryCount, MAX_RETRIES);
+        connectionTested = true;
     }
 }
