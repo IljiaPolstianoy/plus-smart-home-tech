@@ -36,7 +36,6 @@ public class HubRouterClientService {
         log.info("🔧 Инициализация gRPC клиента для Hub Router");
         log.info("📡 Адрес Hub Router: {}", grpcAddress);
 
-        // Тестовое подключение
         testGrpcConnection();
     }
 
@@ -44,72 +43,33 @@ public class HubRouterClientService {
         log.debug("🔍 Тестовое подключение к Hub Router...");
 
         try {
-            // Создаем тестовый DeviceActionProto
             DeviceActionProto testAction = DeviceActionProto.newBuilder()
                     .setSensorId("test-sensor-id")
-                    .setType(ActionTypeProto.ACTIVATE)  // Используем enum из proto
+                    .setType(ActionTypeProto.ACTIVATE)
                     .build();
 
-            DeviceActionRequest testRequest = DeviceActionRequest.newBuilder()
-                    .setHubId("test-hub-id")
-                    .setScenarioName("test-scenario")
-                    .setAction(testAction)
-                    .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
-                            .setSeconds(Instant.now().getEpochSecond())
-                            .build())
-                    .build();
-
-            // Пробуем отправить с коротким таймаутом
-            hubRouterClient
-                    .withDeadlineAfter(1, TimeUnit.SECONDS)
-                    .handleDeviceAction(testRequest);
+            // Используем существующий метод sendDeviceAction
+            sendDeviceAction("test-hub-id", "test-scenario", testAction);
 
             grpcAvailable = true;
             retryCount = 0;
             log.info("✅ Hub Router доступен по адресу: {}", grpcAddress);
 
-        } catch (StatusRuntimeException e) {
-            grpcAvailable = false;
-            if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
-                log.info("⚠️ Hub Router отвечает, но медленно (таймаут 1 сек)");
-                grpcAvailable = true;
-            } else if (e.getStatus().getCode() == Status.Code.UNAVAILABLE) {
-                log.warn("🔌 Hub Router недоступен: {}", e.getMessage());
-            } else if (e.getStatus().getCode() == Status.Code.INVALID_ARGUMENT) {
-                log.info("✅ Hub Router доступен (отклонил тестовые данные)");
-                grpcAvailable = true;
-            } else {
-                log.warn("⚠️ Hub Router ответил с ошибкой: {} - {}",
-                        e.getStatus().getCode(), e.getMessage());
-                grpcAvailable = true;
-            }
         } catch (Exception e) {
             grpcAvailable = false;
-            log.error("❌ Ошибка тестового подключения: {}", e.getMessage());
+            log.warn("⚠️ Hub Router недоступен: {}", e.getMessage());
         }
     }
 
-    /**
-     * Отправка действия устройства через gRPC
-     *
-     * @param hubId ID хаба
-     * @param scenarioName название сценария
-     * @param sensorId ID сенсора/устройства
-     * @param actionType тип действия (enum из proto)
-     * @param value опциональное значение (может быть null)
-     */
-    public void sendDeviceAction(String hubId, String scenarioName,
-                                 String sensorId, ActionTypeProto actionType,
-                                 Integer value) {
+    public void sendDeviceAction(String hubId, String scenarioName, DeviceActionProto action) {
         log.info("📤 === НАЧАЛО ОТПРАВКИ gRPC ===");
-        log.info("📍 Параметры: hub={}, scenario={}, sensor={}, action={}, value={}",
-                hubId, scenarioName, sensorId, actionType, value);
+        log.info("📍 Параметры: hub={}, scenario={}, sensor={}, type={}, hasValue={}",
+                hubId, scenarioName, action.getSensorId(), action.getType(), action.hasValue());
 
         try {
             // Проверяем доступность
             if (!grpcAvailable && retryCount >= MAX_RETRIES) {
                 log.error("🚫 ПРЕРЫВАЕМ: gRPC недоступен после {} попыток", MAX_RETRIES);
-                log.error("💡 Проверьте Hub Router на порту: {}", grpcAddress);
                 return;
             }
 
@@ -124,23 +84,11 @@ public class HubRouterClientService {
 
             log.info("🚀 СОЗДАНИЕ gRPC ЗАПРОСА...");
 
-            // Создаем DeviceActionProto.Builder
-            DeviceActionProto.Builder actionBuilder = DeviceActionProto.newBuilder()
-                    .setSensorId(sensorId)
-                    .setType(actionType);  // Используем enum
-
-            // Добавляем значение если оно есть
-            if (value != null) {
-                actionBuilder.setValue(value);
-            }
-
-            DeviceActionProto action = actionBuilder.build();
-
-            // Создаем запрос
+            // Создаем запрос напрямую из полученного proto
             DeviceActionRequest request = DeviceActionRequest.newBuilder()
                     .setHubId(hubId)
                     .setScenarioName(scenarioName)
-                    .setAction(action)
+                    .setAction(action)  // Используем переданный proto
                     .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
                             .setSeconds(Instant.now().getEpochSecond())
                             .setNanos(Instant.now().getNano())
@@ -153,11 +101,11 @@ public class HubRouterClientService {
                             "  Sensor: {}\n" +
                             "  Action Type: {}\n" +
                             "  Value: {}",
-                    hubId, scenarioName, sensorId, actionType, value);
+                    hubId, scenarioName, action.getSensorId(), action.getType(),
+                    action.hasValue() ? action.getValue() : "null");
 
             try {
                 log.info("🔄 ВЫЗОВ hubRouterClient.handleDeviceAction()...");
-                log.debug("Адрес: {}, Таймаут: 5 сек", grpcAddress);
 
                 var startTime = System.currentTimeMillis();
 
@@ -177,22 +125,18 @@ public class HubRouterClientService {
                 System.out.println("✅ gRPC ЗАПРОС УСПЕШЕН!");
                 System.out.println("   Hub: " + hubId);
                 System.out.println("   Scenario: " + scenarioName);
-                System.out.println("   Sensor: " + sensorId);
-                System.out.println("   Action: " + actionType);
                 System.out.println("   Время: " + duration + " мс");
 
             } catch (StatusRuntimeException e) {
                 retryCount++;
                 grpcAvailable = false;
 
-                log.error("❌ gRPC ОШИБКА: {}", e.getStatus().getCode());
+                log.error("❌ gRpc ОШИБКА: {}", e.getStatus().getCode());
                 log.error("📋 Описание: {}", e.getStatus().getDescription());
 
                 System.out.println("=== GITHUB_DEBUG_GRPC_ERROR ===");
                 System.out.println("❌ gRPC ОШИБКА: " + e.getStatus().getCode());
                 System.out.println("   Описание: " + e.getStatus().getDescription());
-                System.out.println("   Hub: " + hubId);
-                System.out.println("   Scenario: " + scenarioName);
 
                 if (e.getStatus().getCode() == Status.Code.UNAVAILABLE) {
                     log.error("🔌 СЕРВИС НЕДОСТУПЕН: {}", grpcAddress);
@@ -200,7 +144,6 @@ public class HubRouterClientService {
                     log.error("⏰ ТАЙМАУТ: Запрос превысил 5 секунд");
                 } else {
                     log.error("❌ ОШИБКА gRPC: {}", e.getStatus().getCode());
-                    log.debug("Детали ошибки:", e);
                 }
 
             } catch (Exception e) {
@@ -228,7 +171,34 @@ public class HubRouterClientService {
     }
 
     /**
-     * Упрощенный метод для отправки действия без значения
+     * Вспомогательный метод для удобства
+     */
+    public void sendDeviceAction(String hubId, String scenarioName,
+                                 String sensorId, ActionTypeProto actionType,
+                                 Integer value) {
+        log.info("📤 Вызов sendDeviceAction с отдельными параметрами");
+
+        try {
+            DeviceActionProto.Builder actionBuilder = DeviceActionProto.newBuilder()
+                    .setSensorId(sensorId)
+                    .setType(actionType);
+
+            if (value != null) {
+                actionBuilder.setValue(value);
+            }
+
+            DeviceActionProto action = actionBuilder.build();
+
+            // Вызываем основной метод
+            sendDeviceAction(hubId, scenarioName, action);
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка создания DeviceActionProto: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Вспомогательный метод без значения
      */
     public void sendDeviceAction(String hubId, String scenarioName,
                                  String sensorId, ActionTypeProto actionType) {
