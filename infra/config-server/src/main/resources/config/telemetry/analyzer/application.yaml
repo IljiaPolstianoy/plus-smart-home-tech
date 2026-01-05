@@ -18,7 +18,7 @@ spring:
 grpc:
   client:
     hub-router:
-      address: static://localhost:59091
+      address: static://localhost:59090
       negotiation-type: plaintext
       enable-keep-alive: true
       keep-alive-without-calls: true
