@@ -33,76 +33,79 @@ public class SnapshotProcessor implements Runnable {
 
     @Override
     public void run() {
-        log.info("SnapshotProcessor: запуск потока, ждем инициализации...");
+        System.out.println("\n\n=== GITHUB_DEBUG_SNAPSHOT_PROCESSOR_START ===");
+        System.out.println("🚀 SnapshotProcessor ЗАПУЩЕН!");
+        System.out.println("Thread: " + Thread.currentThread().getName());
+        System.out.println("HandlerEvent: " + (handlerEvent != null ? "OK" : "NULL"));
+        System.out.println("Initialized: " + initialized.get());
 
-        // Ждем инициализации
+        // Ждем инициализации перед стартом обработки
         waitForInitialization();
 
         if (!initialized.get()) {
-            log.error("SnapshotProcessor: не инициализирован за {} мс, завершаем поток", initializationTimeout);
+            System.out.println("❌ SnapshotProcessor НЕ ИНИЦИАЛИЗИРОВАН!");
             return;
         }
 
-        log.info("SnapshotProcessor: подписываемся на топик telemetry.snapshots.v1");
-        snapshotConsumer.subscribe(Collections.singletonList("telemetry.snapshots.v1"));
+        System.out.println("✅ SnapshotProcessor инициализирован, подписываемся на Kafka...");
 
-        System.out.println("=== GITHUB_DEBUG_SNAPSHOT_PROCESSOR_START ===");
-        System.out.println("✅ SnapshotProcessor запущен и подписан на топик");
+        snapshotConsumer.subscribe(Collections.singletonList("telemetry.snapshots.v1"));
+        System.out.println("✅ Подписались на топик telemetry.snapshots.v1");
+
+        int messageCount = 0;
 
         try {
             while (running.get() && !Thread.currentThread().isInterrupted()) {
                 try {
+                    System.out.println("⏳ Ожидаем сообщения из Kafka...");
                     ConsumerRecords<String, SensorsSnapshotAvro> records =
                             snapshotConsumer.poll(Duration.ofMillis(pollTimeout));
 
-                    System.out.println("📊 Получено записей: " + records.count());
-
                     if (!records.isEmpty()) {
-                        System.out.println("🎯 Начинаем обработку " + records.count() + " снапшотов");
-                    }
+                        messageCount += records.count();
+                        System.out.println("📥 Получено " + records.count() + " сообщений (всего: " + messageCount + ")");
 
-                    for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
-                        System.out.println("=== GITHUB_DEBUG_SNAPSHOT_RECEIVED ===");
-                        System.out.println("📥 Снапшот получен:");
-                        System.out.println("  Key: " + record.key());
-                        System.out.println("  HubId: " + record.value().getHubId());
-                        System.out.println("  Сенсоров: " + record.value().getSensorsState().size());
+                        for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
+                            System.out.println("=== GITHUB_DEBUG_SNAPSHOT_RECEIVED ===");
+                            System.out.println("Key: " + record.key());
+                            System.out.println("HubId: " + record.value().getHubId());
+                            System.out.println("Partition: " + record.partition());
+                            System.out.println("Offset: " + record.offset());
 
-                        // Проверяем handler
-                        if (handlerEvent == null) {
-                            System.out.println("❌ CRITICAL: handlerEvent is NULL!");
-                        } else {
-                            System.out.println("✅ HandlerEvent доступен");
+                            SensorsSnapshotAvro snapshot = record.value();
+                            String hubId = snapshot.getHubId();
+                            if (hubId == null) {
+                                hubId = "default-hub";
+                            }
+
+                            System.out.println("🚀 ВЫЗЫВАЕМ handler для хаба: " + hubId);
+                            try {
+                                handlerEvent.handler(record.value(), hubId);
+                                System.out.println("✅ handler успешно вызван");
+                            } catch (Exception e) {
+                                System.out.println("❌ Ошибка в handler: " + e.getMessage());
+                                e.printStackTrace();
+                            }
                         }
 
-                        SensorsSnapshotAvro snapshot = record.value();
-                        String hubId = snapshot.getHubId();
-                        if (hubId == null) {
-                            hubId = "default-hub";
-                            log.warn("hubId был null, используем: {}", hubId);
-                        }
-
-                        System.out.println("🚀 Вызываем handler для хаба: " + hubId);
-                        handlerEvent.handler(record.value(), hubId);
-                        System.out.println("✅ Handler вызван");
-                    }
-
-                    if (!records.isEmpty()) {
                         snapshotConsumer.commitSync();
+                        System.out.println("✅ Коммит сделан");
+                    } else {
+                        System.out.println("⏳ Сообщений нет...");
                     }
 
                 } catch (org.apache.kafka.common.errors.WakeupException e) {
-                    log.info("WakeupException получен, завершаем работу SnapshotProcessor");
+                    System.out.println("🛑 WakeupException - завершаем работу");
                     break;
                 } catch (Exception e) {
-                    log.error("Ошибка при обработке снапшотов", e);
-                    System.out.println("❌ Ошибка обработки снапшота: " + e.getMessage());
+                    System.out.println("❌ Ошибка в SnapshotProcessor: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         } finally {
             System.out.println("=== GITHUB_DEBUG_SNAPSHOT_PROCESSOR_STOP ===");
+            System.out.println("Всего обработано сообщений: " + messageCount);
             closeConsumerQuietly();
-            log.info("SnapshotProcessor полностью остановлен");
         }
     }
 

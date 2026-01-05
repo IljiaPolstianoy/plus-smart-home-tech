@@ -2,57 +2,46 @@ spring:
   application:
     name: analyzer
 
-  config:
-    import: "optional:configserver:"
-
+  # ОТКЛЮЧИТЕ Config Server и Eureka для тестов
   cloud:
     config:
-      discovery:
-        enabled: true
-        service-id: config-server
-      fail-fast: false
-      retry:
-        max-attempts: 5
+      enabled: false
+    discovery:
+      enabled: false
 
-# gRPC конфигурация
+# gRPC - ВАЖНО: порт 59091, а не 59090!
 grpc:
   client:
     hub-router:
       address: static://localhost:59091
       negotiation-type: plaintext
 
-# Настройки Kafka
+# Kafka - минимальные настройки
 spring.kafka:
   bootstrap-servers: localhost:9092
   consumer:
-    group-id: analyzer-group
+    group-id: analyzer-test-group
     auto-offset-reset: earliest
     enable-auto-commit: false
+
+# Отключаем Eureka
+eureka:
+  client:
+    enabled: false
 
 server:
   port: 8085
 
-# Настройки Eureka - ПРОСТАЯ версия без переменных
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    enabled: true
-    fetch-registry: true
-    register-with-eureka: true
-  instance:
-    hostname: localhost
-    prefer-ip-address: false
-
-# Настройки процессоров
 processor:
   initialization:
-    timeout: 30000
+    timeout: 10000
   poll:
     timeout: 1000
 
 logging:
   level:
-    ru.yandex.practicum: INFO
-    ru.yandex.practicum.processor: DEBUG
-    org.springframework.cloud: INFO
+    ru.yandex.practicum: DEBUG
+    org.springframework: INFO
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"  # Простой формат

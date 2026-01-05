@@ -16,27 +16,30 @@ public class ProcessorInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        System.out.println("=== GITHUB_DEBUG_PROCESSOR_INITIALIZER ===");
-        log.info("=== НАЧАЛО ИНИЦИАЛИЗАЦИИ PROCESSORS ===");
+        System.out.println("\n\n=== GITHUB_DEBUG_ANALYZER_START ===");
+        System.out.println("🚀 Анализатор запускается...");
+        System.out.println("HubEventProcessor: " + (hubEventProcessor != null ? "OK" : "NULL"));
+        System.out.println("SnapshotProcessor: " + (snapshotProcessor != null ? "OK" : "NULL"));
 
-        // Проверяем зависимости
-        System.out.println("Проверка зависимостей:");
-        System.out.println("  hubEventProcessor: " + (hubEventProcessor != null ? "OK" : "NULL"));
-        System.out.println("  snapshotProcessor: " + (snapshotProcessor != null ? "OK" : "NULL"));
-
-        // Ждем немного
+        // Минимальная задержка
         Thread.sleep(2000);
 
-        // Запускаем процессоры
-        System.out.println("Запускаем процессоры...");
+        System.out.println("🔄 Запускаем процессоры...");
         hubEventProcessor.start();
         snapshotProcessor.start();
 
-        // Активируем
+        System.out.println("✅ Процессоры запущены");
+
+        // Даем время на запуск потоков
+        Thread.sleep(3000);
+
+        System.out.println("⚡ Активируем процессоры...");
         hubEventProcessor.setInitialized(true);
         snapshotProcessor.setInitialized(true);
 
-        System.out.println("✅ Процессоры запущены и инициализированы");
+        System.out.println("✅ Анализатор готов к работе!");
+        System.out.println("=== GITHUB_DEBUG_ANALYZER_READY ===\n");
+
         log.info("=== ИНИЦИАЛИЗАЦИЯ PROCESSORS ЗАВЕРШЕНА ===");
     }
 }

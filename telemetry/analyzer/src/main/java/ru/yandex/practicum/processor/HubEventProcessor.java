@@ -37,37 +37,61 @@ public class HubEventProcessor implements Runnable {
 
     @Override
     public void run() {
-        log.info("HubEventProcessor: запуск потока, ждем инициализации...");
+        System.out.println("\n\n=== GITHUB_DEBUG_HUB_EVENT_PROCESSOR_START ===");
+        System.out.println("🚀 HubEventProcessor ЗАПУЩЕН!");
+        System.out.println("Thread: " + Thread.currentThread().getName());
+        System.out.println("Initialized: " + initialized.get());
 
-        // Ждем инициализации перед стартом обработки
         waitForInitialization();
 
         if (!initialized.get()) {
-            log.error("HubEventProcessor: не инициализирован за {} мс, завершаем поток", initializationTimeout);
+            System.out.println("❌ HubEventProcessor НЕ ИНИЦИАЛИЗИРОВАН!");
             return;
         }
 
+        System.out.println("✅ HubEventProcessor инициализирован, подписываемся на Kafka...");
+
         hubEventConsumer.subscribe(Collections.singletonList("telemetry.hubs.v1"));
-        log.info("HubEventProcessor запущен и подписан на топик telemetry.hubs.v1");
+        System.out.println("✅ Подписались на топик telemetry.hubs.v1");
+
+        int messageCount = 0;
 
         while (running.get() && !Thread.currentThread().isInterrupted()) {
             try {
+                System.out.println("⏳ Ожидаем hub событий из Kafka...");
                 ConsumerRecords<String, HubEventAvro> records =
                         hubEventConsumer.poll(Duration.ofMillis(1000));
 
-                for (ConsumerRecord<String, HubEventAvro> record : records) {
-                    log.info("Получено hub событие для хаба: {}", record.key());
-                    processHubEvent(record.value());
+                if (!records.isEmpty()) {
+                    messageCount += records.count();
+                    System.out.println("📥 Получено " + records.count() + " hub событий (всего: " + messageCount + ")");
+
+                    for (ConsumerRecord<String, HubEventAvro> record : records) {
+                        System.out.println("=== GITHUB_DEBUG_HUB_EVENT_RECEIVED ===");
+                        System.out.println("Key: " + record.key());
+                        System.out.println("Payload type: " + record.value().getPayload().getClass().getSimpleName());
+
+                        try {
+                            processHubEvent(record.value());
+                            System.out.println("✅ Hub событие обработано");
+                        } catch (Exception e) {
+                            System.out.println("❌ Ошибка обработки hub события: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    }
+
+                    hubEventConsumer.commitSync();
                 }
 
-                hubEventConsumer.commitSync();
             } catch (Exception e) {
-                log.error("Ошибка при обработке hub events", e);
+                System.out.println("❌ Ошибка в HubEventProcessor: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
+        System.out.println("=== GITHUB_DEBUG_HUB_EVENT_PROCESSOR_STOP ===");
+        System.out.println("Всего обработано hub событий: " + messageCount);
         hubEventConsumer.close();
-        log.info("HubEventProcessor остановлен");
     }
 
     private void waitForInitialization() {
