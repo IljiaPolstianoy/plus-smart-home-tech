@@ -1,47 +1,16 @@
+# src/main/resources/application.yml
 spring:
   application:
     name: analyzer
-
-  # ОТКЛЮЧИТЕ Config Server и Eureka для тестов
+  
+  config:
+    import: "optional:configserver:"
+  
   cloud:
     config:
-      enabled: false
-    discovery:
-      enabled: false
-
-# gRPC - ВАЖНО: порт 59091, а не 59090!
-grpc:
-  client:
-    hub-router:
-      address: static://localhost:59091
-      negotiation-type: plaintext
-
-# Kafka - минимальные настройки
-spring.kafka:
-  bootstrap-servers: localhost:9092
-  consumer:
-    group-id: analyzer-test-group
-    auto-offset-reset: earliest
-    enable-auto-commit: false
-
-# Отключаем Eureka
-eureka:
-  client:
-    enabled: false
-
-server:
-  port: 8085
-
-processor:
-  initialization:
-    timeout: 10000
-  poll:
-    timeout: 1000
-
-logging:
-  level:
-    ru.yandex.practicum: DEBUG
-    org.springframework: INFO
-    org.apache.kafka: WARN
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"  # Простой формат
+      discovery:
+        enabled: true
+        service-id: config-server
+      fail-fast: false
+      retry:
+        max-attempts: 5
