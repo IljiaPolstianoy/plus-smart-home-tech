@@ -1,0 +1,14 @@
+# src/main/resources/bootstrap.yml
+spring:
+  application:
+    name: analyzer
+
+  cloud:
+    config:
+      uri: http://localhost:8888
+      fail-fast: false
+      retry:
+        max-attempts: 10
+        initial-interval: 2000
+        max-interval: 10000
+      enabled: true  # Явно включаем Config Client

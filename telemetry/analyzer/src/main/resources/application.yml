@@ -14,30 +14,45 @@ spring:
       retry:
         max-attempts: 5
 
-  # Локальные значения по умолчанию
-  kafka:
-    consumer:
-      group-id: analyzer-group
-    properties:
-      schema.registry.url: http://localhost:8081
-
-# gRPC - пусть Config Server переопределит
+# gRPC конфигурация
 grpc:
   client:
     hub-router:
-      address: localhost:59090  # Значение по умолчанию
+      address: static://localhost:59090  # Прямой адрес пока
       negotiation-type: plaintext
 
-server:
-  port: 0
+# Настройки Kafka
+spring.kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    group-id: analyzer-group
+    auto-offset-reset: earliest
+    enable-auto-commit: false
 
+server:
+  port: 8085
+
+# Настройки Eureka - ПРОСТАЯ версия без переменных
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    enabled: true
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
 
+# Настройки процессоров
 processor:
   initialization:
-    timeout: 15000  # 15 секунд на инициализацию в CI
+    timeout: 30000
   poll:
     timeout: 1000
+
+logging:
+  level:
+    ru.yandex.practicum: INFO
+    ru.yandex.practicum.processor: DEBUG
+    org.springframework.cloud: INFO
