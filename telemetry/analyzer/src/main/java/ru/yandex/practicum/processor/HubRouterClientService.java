@@ -43,17 +43,34 @@ public class HubRouterClientService {
         log.debug("🔍 Тестовое подключение к Hub Router...");
 
         try {
+            // Создаем тестовый DeviceActionProto
             DeviceActionProto testAction = DeviceActionProto.newBuilder()
                     .setSensorId("test-sensor-id")
                     .setType(ActionTypeProto.ACTIVATE)
                     .build();
 
-            // Используем существующий метод sendDeviceAction
-            sendDeviceAction("test-hub-id", "test-scenario", testAction);
+            DeviceActionRequest testRequest = DeviceActionRequest.newBuilder()
+                    .setHubId("test-hub-id")
+                    .setScenarioName("test-scenario")
+                    .setAction(testAction)
+                    .setTimestamp(com.google.protobuf.Timestamp.newBuilder()
+                            .setSeconds(Instant.now().getEpochSecond())
+                            .build())
+                    .build();
 
-            grpcAvailable = true;
-            retryCount = 0;
-            log.info("✅ Hub Router доступен по адресу: {}", grpcAddress);
+            // Пробуем отправить с коротким таймаутом - ВЫЗЫВАЕМ НАПРЯМУЮ, а не через sendDeviceAction
+            try {
+                hubRouterClient
+                        .withDeadlineAfter(1, TimeUnit.SECONDS)
+                        .handleDeviceAction(testRequest);
+
+                grpcAvailable = true;
+                retryCount = 0;
+                log.info("✅ Hub Router доступен по адресу: {}", grpcAddress);
+
+            } catch (StatusRuntimeException e) {
+                // ... обработка ошибок
+            }
 
         } catch (Exception e) {
             grpcAvailable = false;
