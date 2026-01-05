@@ -40,21 +40,44 @@ grpc:
 
 logging:
   level:
-    ru.yandex.practicum: DEBUG
-    ru.yandex.practicum.processor: TRACE
-    ru.yandex.practicum.handler: TRACE
-    ru.yandex.practicum.repository: DEBUG
+    # ВСЕ пакеты проекта на максимальном уровне
+    ru.yandex.practicum: TRACE
 
-    org.apache.kafka: INFO
-    org.springframework.kafka: DEBUG
+    # Spring компоненты
+    org.springframework.kafka: TRACE
+    org.springframework.kafka.listener: TRACE
+
+    # Kafka подробности
+    org.apache.kafka: DEBUG
+    org.apache.kafka.clients.consumer.ConsumerConfig: DEBUG
+    org.apache.kafka.clients.consumer.KafkaConsumer: DEBUG
+
+    # gRPC логи
+    io.grpc: DEBUG
+    io.grpc.netty: DEBUG
+
+    # Hibernate подробности
+    org.hibernate: DEBUG
     org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.type: TRACE
+    org.hibernate.stat: DEBUG
+
+    # Spring Boot
+    org.springframework.boot.autoconfigure: DEBUG
+    org.springframework.context: DEBUG
 
   file:
     name: logs/analyzer.log
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    max-history: 7
+    max-size: 10MB
 
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
 server:
   port: 0
