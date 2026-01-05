@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: aggregator-ci
+
+  # Kafka конфигурация для CI (Testcontainers или Embedded Kafka)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: aggregator-ci-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+
+  # Отключаем Spring Cloud в CI тестах
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+
+  # Включаем встроенный Kafka для тестов если нужно
+  embedded:
+    kafka:
+      enabled: ${EMBEDDED_KAFKA_ENABLED:false}
+
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet
+
+# Отключаем Eureka
+eureka:
+  client:
+    enabled: false
+    fetch-registry: false
+    register-with-eureka: false
+
+# Настройки Kafka топиков
+kafka:
+  topics:
+    input: telemetry.sensors.v1
+    output: telemetry.snapshots.v1
+  topic:
+    initialization:
+      enabled: false  # Отключаем инициализацию топиков в CI
+
+# CI-специфичные настройки
+ci:
+  mode: true
+
+# Логирование для CI
+logging:
+  level:
+    root: INFO
+    ru.yandex.practicum: DEBUG
+    org.springframework.kafka: INFO
+    org.apache.kafka: WARN
+    org.springframework.cloud: ERROR
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

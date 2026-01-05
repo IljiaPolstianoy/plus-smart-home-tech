@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    config:
+      enabled: ${CONFIG_SERVER_ENABLED:true}
+      fail-fast: false
+
+  # Значения по умолчанию для локальной разработки
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+# Отключаем инициализатор в CI
+kafka:
+  topic:
+    initializer:
+      enabled: ${KAFKA_TOPIC_INITIALIZER_ENABLED:true}
