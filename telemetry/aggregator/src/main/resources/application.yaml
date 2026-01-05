@@ -7,6 +7,7 @@ spring:
   config:
     activate:
       on-profile: ci
+    import: "optional:configserver:"
   kafka:
     bootstrap-servers: localhost:9092
     consumer:

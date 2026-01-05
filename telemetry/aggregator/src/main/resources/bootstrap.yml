@@ -2,6 +2,10 @@ spring:
   application:
     name: aggregator
 
+  # Критически важная настройка для Spring Cloud Config
+  config:
+    import: "optional:configserver:"
+
   # Настройки для Config Server
   cloud:
     config:
@@ -20,3 +24,9 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: ${KAFKA_CONSUMER_GROUP:aggregator-group}
+
+# Дополнительные настройки
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
