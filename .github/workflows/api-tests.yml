@@ -25,8 +25,88 @@ on:
         default: "false"
 
 jobs:
-  build:
-    uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
-    with:
-      verbose_mode: ${{ inputs.verbose_mode }}
-      print_logs: ${{ inputs.print_logs }}
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build all JARs
+        run: |
+          mvn clean package -DskipTests
+
+      - name: Start Eureka Server
+        run: |
+          cd eureka-server/target
+          java -jar eureka-server-*.jar --server.port=8761
+        # Фоновый запуск (важно для следующих шагов)
+        background: true
+
+      - name: Wait for Eureka to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8761/eureka/health | grep "UP"; then
+              echo "Eureka is ready"
+              break
+            fi
+            echo "Waiting for Eureka... ($i/30)"
+            sleep 5
+          done
+          if ! curl -s http://localhost:8761/eureka/health | grep "UP"; then
+            echo "Eureka failed to start"
+            exit 1
+          fi
+
+      - name: Start Config Server
+        run: |
+          cd config-server/target
+          java -jar config-server-*.jar
+        background: true
+
+      - name: Wait for Config Server to register in Eureka
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8761/eureka/apps | grep -i "config-server"; then
+              echo "Config Server registered in Eureka"
+              break
+            fi
+            echo "Waiting for Config Server registration... ($i/30)"
+            sleep 5
+          done
+          if ! curl -s http://localhost:8761/eureka/apps | grep -i "config-server"; then
+            echo "Config Server failed to register"
+            exit 1
+          fi
+
+      - name: Start Aggregator
+        run: |
+          cd telemetry/aggregator/target
+          java -jar aggregator-*.jar
+        background: true
+
+      - name: Wait for Aggregator to start
+        run: |
+          # Просто ждём 10–15 сек, т.к. агрегатор не имеет health-endpoint в примере
+          sleep 15
+
+      - name: Run API Tests (via reusable workflow)
+        uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
+        with:
+          verbose_mode: ${{ inputs.verbose_mode }}
+          print_logs: ${{ inputs.print_logs }}
+
+      - name: Stop all services (cleanup)
+        if: always()
+        run: |
+          echo "Stopping services..."
+          pkill -f "eureka-server-.*\.jar" || true
+          pkill -f "config-server-.*\.jar" || true
+          pkill -f "aggregator-.*\.jar" || true
+          sleep 5
