@@ -14,15 +14,7 @@ on:
         default: false
         type: boolean
   pull_request:
-    inputs:
-      verbose_mode:
-        required: false
-        type: string
-        default: "false"
-      print_logs:
-        required: false
-        type: string
-        default: "false"
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-and-test:
@@ -42,12 +34,11 @@ jobs:
         run: |
           mvn clean package -DskipTests
 
-      - name: Start Eureka Server
+      - name: Start Eureka Server (background)
         run: |
           cd eureka-server/target
-          java -jar eureka-server-*.jar --server.port=8761
-        # Фоновый запуск (важно для следующих шагов)
-        background: true
+          nohup java -jar eureka-server-*.jar --server.port=8761 > eureka.log 2>&1 &
+          echo $! > .eureka_pid  # Сохраняем PID
 
       - name: Wait for Eureka to be ready
         run: |
@@ -61,14 +52,15 @@ jobs:
           done
           if ! curl -s http://localhost:8761/eureka/health | grep "UP"; then
             echo "Eureka failed to start"
+            cat eureka.log  # Выводим логи для отладки
             exit 1
           fi
 
-      - name: Start Config Server
+      - name: Start Config Server (background)
         run: |
           cd config-server/target
-          java -jar config-server-*.jar
-        background: true
+          nohup java -jar config-server-*.jar > config.log 2>&1 &
+          echo $! > .config_pid
 
       - name: Wait for Config Server to register in Eureka
         run: |
@@ -82,19 +74,18 @@ jobs:
           done
           if ! curl -s http://localhost:8761/eureka/apps | grep -i "config-server"; then
             echo "Config Server failed to register"
+            cat config.log
             exit 1
           fi
 
-      - name: Start Aggregator
+      - name: Start Aggregator (background)
         run: |
           cd telemetry/aggregator/target
-          java -jar aggregator-*.jar
-        background: true
+          nohup java -jar aggregator-*.jar > aggregator.log 2>&1 &
+          echo $! > .aggregator_pid
 
       - name: Wait for Aggregator to start
-        run: |
-          # Просто ждём 10–15 сек, т.к. агрегатор не имеет health-endpoint в примере
-          sleep 15
+        run: sleep 15
 
       - name: Run API Tests (via reusable workflow)
         uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
@@ -106,6 +97,17 @@ jobs:
         if: always()
         run: |
           echo "Stopping services..."
+          # Останавливаем по PID, если файлы есть
+          if [ -f .eureka_pid ]; then
+            kill $(cat .eureka_pid) || true
+          fi
+          if [ -f .config_pid ]; then
+            kill $(cat .config_pid) || true
+          fi
+          if [ -f .aggregator_pid ]; then
+            kill $(cat .aggregator_pid) || true
+          fi
+          # Дополнительно убиваем по имени, если остались
           pkill -f "eureka-server-.*\.jar" || true
           pkill -f "config-server-.*\.jar" || true
           pkill -f "aggregator-.*\.jar" || true
