@@ -37,7 +37,7 @@ eureka:
 grpc:
   client:
     hub-router:
-      address: discovery:///hub-router-service
+      address: "static://localhost:59091"
       negotiation-type: plaintext
       enableKeepAlive: true
       keepAliveWithoutCalls: true
