@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: aggregator-test
+
+  # Kafka настройки для тестов
+  kafka:
+    bootstrap-servers: localhost:9099
+    properties:
+      # Увеличиваем таймауты для тестов
+      request.timeout.ms: 30000
+      metadata.max.age.ms: 30000
+    consumer:
+      group-id: aggregator-test-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+
+  # Spring Cloud настройки для тестов
+  cloud:
+    config:
+      enabled: true
+      fail-fast: false
+      uri: http://localhost:8888
+      discovery:
+        enabled: false
+    discovery:
+      enabled: false
+    loadbalancer:
+      enabled: false
+
+  # Отключаем автоматическую конфигурацию в тестах
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.config.client.ConfigClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+
+# Eureka отключен в тестах
+eureka:
+  client:
+    enabled: false
+  instance:
+    hostname: localhost
+
+# Тестовые топики Kafka
+kafka:
+  topics:
+    input: test-sensor-events
+    output: test-aggregated-snapshots
+
+# Настройки для тестов
+test:
+  mode: true
+  kafka:
+    mock: true
+
+# Логирование для тестов
+logging:
+  level:
+    root: INFO
+    ru.yandex.practicum: DEBUG
+    org.springframework.kafka: WARN
+    org.apache.kafka: ERROR
+    org.springframework.cloud: WARN
+    com.netflix.eureka: ERROR
