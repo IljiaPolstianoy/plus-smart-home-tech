@@ -17,9 +17,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build-and-test:
+  setup-services:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -38,7 +37,7 @@ jobs:
         run: |
           cd eureka-server/target
           nohup java -jar eureka-server-*.jar --server.port=8761 > eureka.log 2>&1 &
-          echo $! > .eureka_pid  # Сохраняем PID
+          echo $! > .eureka_pid
 
       - name: Wait for Eureka to be ready
         run: |
@@ -52,7 +51,7 @@ jobs:
           done
           if ! curl -s http://localhost:8761/eureka/health | grep "UP"; then
             echo "Eureka failed to start"
-            cat eureka.log  # Выводим логи для отладки
+            cat eureka.log
             exit 1
           fi
 
@@ -87,27 +86,24 @@ jobs:
       - name: Wait for Aggregator to start
         run: sleep 15
 
-      - name: Run API Tests (via reusable workflow)
-        uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
-        with:
-          verbose_mode: ${{ inputs.verbose_mode }}
-          print_logs: ${{ inputs.print_logs }}
+  run-tests:
+    needs: setup-services  # Зависит от успешного старта сервисов
+    uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
+    with:
+      verbose_mode: ${{ inputs.verbose_mode }}
+      print_logs: ${{ inputs.print_logs }}
 
-      - name: Stop all services (cleanup)
-        if: always()
+  cleanup:
+    needs: [setup-services, run-tests]  # Выполняется всегда
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Stop all services
         run: |
           echo "Stopping services..."
-          # Останавливаем по PID, если файлы есть
-          if [ -f .eureka_pid ]; then
-            kill $(cat .eureka_pid) || true
-          fi
-          if [ -f .config_pid ]; then
-            kill $(cat .config_pid) || true
-          fi
-          if [ -f .aggregator_pid ]; then
-            kill $(cat .aggregator_pid) || true
-          fi
-          # Дополнительно убиваем по имени, если остались
+          if [ -f .eureka_pid ]; then kill $(cat .eureka_pid) || true; fi
+          if [ -f .config_pid ]; then kill $(cat .config_pid) || true; fi
+          if [ -f .aggregator_pid ]; then kill $(cat .aggregator_pid) || true; fi
           pkill -f "eureka-server-.*\.jar" || true
           pkill -f "config-server-.*\.jar" || true
           pkill -f "aggregator-.*\.jar" || true
