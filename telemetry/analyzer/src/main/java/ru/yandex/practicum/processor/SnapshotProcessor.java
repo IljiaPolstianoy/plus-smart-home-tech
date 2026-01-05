@@ -5,12 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.handler.HandlerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
@@ -18,25 +20,43 @@ import java.util.Collections;
 public class SnapshotProcessor implements Runnable {
     private final KafkaConsumer<String, SensorsSnapshotAvro> snapshotConsumer;
     private final HandlerEvent handlerEvent;
-    private volatile boolean running = true;
+
+    private final AtomicBoolean running = new AtomicBoolean(true);
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
     private Thread processorThread;
+
+    @Value("${processor.initialization.timeout:15000}")
+    private long initializationTimeout;
+
+    @Value("${processor.poll.timeout:1000}")
+    private long pollTimeout;
 
     @Override
     public void run() {
+        log.info("SnapshotProcessor: запуск потока, ждем инициализации...");
+
+        // Ждем инициализации перед стартом обработки
+        waitForInitialization();
+
+        if (!initialized.get()) {
+            log.error("SnapshotProcessor: не инициализирован за {} мс, завершаем поток", initializationTimeout);
+            return;
+        }
+
+        log.info("SnapshotProcessor: подписываемся на топик telemetry.snapshots.v1");
         snapshotConsumer.subscribe(Collections.singletonList("telemetry.snapshots.v1"));
-        log.info("SnapshotProcessor запущен и подписан на топик telemetry.snapshots.v1");
 
         try {
-            while (running && !Thread.currentThread().isInterrupted()) {
+            while (running.get() && !Thread.currentThread().isInterrupted()) {
                 try {
-                    ConsumerRecords<String, SensorsSnapshotAvro> records = snapshotConsumer.poll(Duration.ofMillis(1000));
+                    ConsumerRecords<String, SensorsSnapshotAvro> records =
+                            snapshotConsumer.poll(Duration.ofMillis(pollTimeout));
 
                     for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
                         System.out.println("=== GITHUB_DEBUG_SNAPSHOT ===");
                         System.out.println("📥 Снапшот получен: key=" + record.key() +
                                 ", hubId=" + record.value().getHubId() +
                                 ", сенсоров=" + record.value().getSensorsState().size());
-
 
                         SensorsSnapshotAvro snapshot = record.value();
                         log.info("📊 Снапшот детально: {}", snapshot);
@@ -62,7 +82,6 @@ public class SnapshotProcessor implements Runnable {
                     }
 
                 } catch (org.apache.kafka.common.errors.WakeupException e) {
-                    // Это нормальное исключение при вызове wakeup()
                     log.info("WakeupException получен, завершаем работу SnapshotProcessor");
                     break;
                 } catch (Exception e) {
@@ -70,17 +89,40 @@ public class SnapshotProcessor implements Runnable {
                 }
             }
         } finally {
-            // Закрываем consumer без прерывания
             closeConsumerQuietly();
             log.info("SnapshotProcessor полностью остановлен");
         }
     }
 
+    private void waitForInitialization() {
+        long startTime = System.currentTimeMillis();
+        log.info("SnapshotProcessor: ожидание инициализации (таймаут: {} мс)", initializationTimeout);
+
+        while (!initialized.get() &&
+                (System.currentTimeMillis() - startTime) < initializationTimeout) {
+            try {
+                Thread.sleep(1000);
+                long elapsed = (System.currentTimeMillis() - startTime) / 1000;
+                log.info("SnapshotProcessor: ждем инициализации... {} сек", elapsed);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("SnapshotProcessor: прервано ожидание инициализации");
+                break;
+            }
+        }
+
+        if (initialized.get()) {
+            log.info("SnapshotProcessor: успешно инициализирован за {} мс",
+                    System.currentTimeMillis() - startTime);
+        } else {
+            log.warn("SnapshotProcessor: не инициализирован в течение {} мс",
+                    System.currentTimeMillis() - startTime);
+        }
+    }
+
     private void closeConsumerQuietly() {
         try {
-            // Отписываемся от топиков перед закрытием
             snapshotConsumer.unsubscribe();
-            // Закрываем consumer с небольшим таймаутом
             snapshotConsumer.close(Duration.ofSeconds(5));
         } catch (Exception e) {
             log.warn("Ошибка при закрытии consumer: {}", e.getMessage());
@@ -91,21 +133,18 @@ public class SnapshotProcessor implements Runnable {
         if (processorThread == null || !processorThread.isAlive()) {
             processorThread = new Thread(this, "SnapshotProcessorThread");
             processorThread.start();
-            log.info("SnapshotProcessor запущен");
+            log.info("SnapshotProcessor поток запущен (ожидает инициализации)");
         }
     }
 
     public void shutdown() {
         log.info("Запущен graceful shutdown SnapshotProcessor");
-        running = false;
-
-        // Используем wakeup() для корректного выхода из poll()
+        running.set(false);
         snapshotConsumer.wakeup();
 
-        // Ждем завершения потока
         if (processorThread != null && processorThread.isAlive()) {
             try {
-                processorThread.join(10000); // 10 секунд на завершение
+                processorThread.join(10000);
                 if (processorThread.isAlive()) {
                     log.warn("Поток SnapshotProcessor не завершился за отведенное время");
                 }
@@ -114,5 +153,14 @@ public class SnapshotProcessor implements Runnable {
                 log.warn("Прервано ожидание завершения SnapshotProcessor");
             }
         }
+    }
+
+    public void setInitialized(boolean value) {
+        initialized.set(value);
+        log.info("SnapshotProcessor initialized = {}", value);
+    }
+
+    public boolean isInitialized() {
+        return initialized.get();
     }
 }

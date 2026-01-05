@@ -35,3 +35,9 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+processor:
+  initialization:
+    timeout: 15000  # 15 секунд на инициализацию в CI
+  poll:
+    timeout: 1000
