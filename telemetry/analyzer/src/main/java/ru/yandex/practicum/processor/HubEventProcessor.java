@@ -97,32 +97,41 @@ public class HubEventProcessor implements Runnable {
     }
 
     private void processHubEvent(HubEventAvro hubEvent) {
-        System.out.println("=== GITHUB_DEBUG_HUB_EVENT ===");
-        System.out.println("📥 Hub событие: " + hubEvent.getPayload().getClass().getSimpleName() +
-                ", хаб: " + hubEvent.getHubId());
+        System.out.println("\n=== GITHUB_DEBUG_HUB_EVENT_RECEIVED ===");
+        System.out.println("📥 Hub событие получено:");
+        System.out.println("  Hub ID: " + hubEvent.getHubId());
+        System.out.println("  Timestamp: " + hubEvent.getTimestamp());
+        System.out.println("  Payload type: " + hubEvent.getPayload().getClass().getSimpleName());
+
         try {
-            log.info("📥 Получено hub событие: {}", hubEvent);
             String hubId = hubEvent.getHubId();
-            log.info("Hub ID: {}, Timestamp: {}, Payload type: {}",
-                    hubId, hubEvent.getTimestamp(), hubEvent.getPayload().getClass().getSimpleName());
+            log.info("📥 Получено hub событие: {}", hubEvent);
 
             switch (hubEvent.getPayload().getClass().getSimpleName()) {
                 case "DeviceAddedEventAvro":
+                    System.out.println("  Тип: DEVICE_ADDED");
                     processDeviceAdded(hubId, (ru.yandex.practicum.kafka.telemetry.event.DeviceAddedEventAvro) hubEvent.getPayload());
                     break;
                 case "DeviceRemovedEventAvro":
+                    System.out.println("  Тип: DEVICE_REMOVED");
                     processDeviceRemoved(hubId, (ru.yandex.practicum.kafka.telemetry.event.DeviceRemovedEventAvro) hubEvent.getPayload());
                     break;
                 case "ScenarioAddedEventAvro":
+                    System.out.println("  Тип: SCENARIO_ADDED");
                     processScenarioAdded(hubId, (ru.yandex.practicum.kafka.telemetry.event.ScenarioAddedEventAvro) hubEvent.getPayload());
                     break;
                 case "ScenarioRemovedEventAvro":
+                    System.out.println("  Тип: SCENARIO_REMOVED");
                     processScenarioRemoved(hubId, (ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro) hubEvent.getPayload());
                     break;
                 default:
+                    System.out.println("  ⚠️ Неизвестный тип события: " + hubEvent.getPayload().getClass().getSimpleName());
                     log.warn("Неизвестный тип события: {}", hubEvent.getPayload().getClass().getSimpleName());
             }
+
+            System.out.println("✅ Hub событие обработано");
         } catch (Exception e) {
+            System.out.println("❌ Ошибка обработки hub события: " + e.getMessage());
             log.error("❌ Ошибка обработки hub события: {}", hubEvent, e);
         }
     }

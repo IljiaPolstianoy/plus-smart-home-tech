@@ -12,10 +12,7 @@ import ru.yandex.practicum.model.ScenarioProjection;
 import ru.yandex.practicum.processor.HubRouterClientService;
 import ru.yandex.practicum.repository.ScenarioRepository;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -38,9 +35,10 @@ public class HandlerEventImpl implements HandlerEvent {
         System.out.println("\n=== GITHUB_DEBUG_HANDLER_START ===");
         System.out.println("📦 СНАПШОТ ПОЛУЧЕН:");
         System.out.println("  Hub ID: " + hubId);
+        System.out.println("  Timestamp снапшота: " + snapshotAvro.getTimestamp());
         System.out.println("  Сенсоров: " + (snapshotAvro.getSensorsState() != null ? snapshotAvro.getSensorsState().size() : 0));
 
-        log.info("\n=== НАЧАЛО ОБРАБОТКИ СНАПШОТА ДЛЯ ХАБА: {} ===", hubId);
+        log.info("=== НАЧАЛО ОБРАБОТКИ СНАПШОТА ДЛЯ ХАБА: {} ===", hubId);
 
         // 1. Проверяем входные данные
         if (snapshotAvro.getSensorsState() == null || snapshotAvro.getSensorsState().isEmpty()) {
@@ -51,10 +49,10 @@ public class HandlerEventImpl implements HandlerEvent {
 
         // 2. Детальное логирование входящих данных
         System.out.println("\n📊 ДЕТАЛИ СНАПШОТА:");
-        Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
+        final Map<String, SensorStateAvro> sensorStateAvroMap = snapshotAvro.getSensorsState();
         sensorStateAvroMap.forEach((sensorId, state) -> {
             System.out.println("  🔌 Сенсор: " + sensorId);
-            System.out.println("    Timestamp: " + state.getTimestamp());
+            System.out.println("    Timestamp сенсора: " + state.getTimestamp());
 
             Object data = state.getData();
             if (data == null) {
@@ -64,11 +62,12 @@ public class HandlerEventImpl implements HandlerEvent {
                 System.out.println("    Тип данных: GenericRecord (" + record.getSchema().getName() + ")");
 
                 // Логируем все поля
-                record.getSchema().getFields().forEach(field -> {
+                for (org.apache.avro.Schema.Field field : record.getSchema().getFields()) {
                     Object value = record.get(field.name());
-                    System.out.println("      " + field.name() + ": " + value +
-                            " (тип: " + (value != null ? value.getClass().getSimpleName() : "null") + ")");
-                });
+                    String valueStr = (value != null) ? value.toString() : "null";
+                    String typeStr = (value != null) ? value.getClass().getSimpleName() : "null";
+                    System.out.println("      " + field.name() + ": " + valueStr + " (тип: " + typeStr + ")");
+                }
             } else {
                 System.out.println("    Данные: " + data + " (тип: " + data.getClass().getSimpleName() + ")");
             }
@@ -77,7 +76,7 @@ public class HandlerEventImpl implements HandlerEvent {
         // 3. Загружаем сценарии из БД
         final List<ScenarioProjection> scenarios;
         try {
-            System.out.println("\n🔍 ЗАГРУЗКА СЦЕНАРИЕВ ИЗ БД...");
+            System.out.println("\n🔍 ЗАГРУЗКА СЦЕНАРИЕВ ИЗ БД ДЛЯ ХАБА: " + hubId);
             scenarios = scenarioRepository.findScenariosWithDetailsByHubId(hubId);
             System.out.println("✅ Найдено сценариев: " + scenarios.size());
             log.info("🔍 Найдено сценариев в БД для хаба {}: {}", hubId, scenarios.size());
@@ -92,17 +91,24 @@ public class HandlerEventImpl implements HandlerEvent {
             System.out.println("\n📝 НАЙДЕННЫЕ СЦЕНАРИИ:");
             scenarios.forEach(scenario -> {
                 System.out.println("  Сценарий: '" + scenario.getScenarioName() + "' (ID: " + scenario.getScenarioId() + ")");
-                System.out.println("    Условие: тип=" + scenario.getConditionType() +
-                        ", операция=" + scenario.getConditionOperation() +
-                        ", значение=" + scenario.getConditionValue() +
-                        ", сенсор=" + scenario.getSensorId());
-                System.out.println("    Действие: тип=" + scenario.getActionType() +
-                        ", значение=" + scenario.getActionValue() +
-                        ", сенсор=" + scenario.getActionSensorId());
+
+                if (scenario.getConditionType() != null) {
+                    System.out.println("    Условие: тип=" + scenario.getConditionType() +
+                            ", операция=" + scenario.getConditionOperation() +
+                            ", значение=" + scenario.getConditionValue() +
+                            ", сенсор=" + scenario.getSensorId());
+                }
+
+                if (scenario.getActionType() != null) {
+                    System.out.println("    Действие: тип=" + scenario.getActionType() +
+                            ", значение=" + scenario.getActionValue() +
+                            ", сенсор=" + scenario.getActionSensorId());
+                }
             });
 
         } catch (Exception e) {
             System.out.println("❌ ОШИБКА ПРИ ЗАГРУЗКЕ СЦЕНАРИЕВ: " + e.getMessage());
+            e.printStackTrace();
             log.error("❌ Ошибка при загрузке сценариев для хаба {}: {}", hubId, e.getMessage(), e);
             return;
         }
@@ -139,12 +145,13 @@ public class HandlerEventImpl implements HandlerEvent {
                 }
             } catch (Exception e) {
                 System.out.println("❌ ОШИБКА ПРИ ПРОВЕРКЕ СЦЕНАРИЯ '" + scenarioName + "': " + e.getMessage());
+                e.printStackTrace();
                 log.error("❌ Ошибка при проверке сценария '{}' для хаба {}: {}",
                         scenarioName, hubId, e.getMessage(), e);
             }
         }
 
-        System.out.println("\n=== GITHUB_DEBUG_HANDLER_END ===");
+        System.out.println("=== GITHUB_DEBUG_HANDLER_END ===\n");
         log.info("=== ЗАВЕРШЕНИЕ ОБРАБОТКИ СНАПШОТА ДЛЯ ХАБА: {} ===\n", hubId);
     }
 
@@ -250,30 +257,47 @@ public class HandlerEventImpl implements HandlerEvent {
         GenericRecord record = (GenericRecord) sensorData;
 
         // Логируем все доступные поля
-        List<String> availableFields = record.getSchema().getFields().stream()
-                .map(org.apache.avro.Schema.Field::name)
-                .collect(Collectors.toList());
-        System.out.println("    📋 Доступные поля в сенсоре: " + availableFields);
-
-        // Логируем значения всех полей
-        for (String field : availableFields) {
-            Object value = record.get(field);
-            System.out.println("      " + field + " = " + value +
-                    " (тип: " + (value != null ? value.getClass().getSimpleName() : "null") + ")");
+        List<String> availableFields = new ArrayList<>();
+        for (org.apache.avro.Schema.Field field : record.getSchema().getFields()) {
+            availableFields.add(field.name());
         }
+        System.out.println("    📋 Доступные поля в сенсоре: " + availableFields);
 
         Object temperatureObj = null;
         String foundField = null;
 
-        // Ищем поле с температурой
-        for (String fieldName : TEMPERATURE_FIELDS) {
-            if (record.hasField(fieldName)) {
-                temperatureObj = record.get(fieldName);
-                foundField = fieldName;
-                System.out.println("    ✅ Найдена температура в поле '" + fieldName + "': " + temperatureObj);
-                log.info("✅ Найдена температура в стандартном поле '{}': {}", fieldName, temperatureObj);
-                break;
-            }
+        // Ищем поле с температурой - ПРИОРИТЕТ ДЛЯ CLIMATE_SENSOR
+        System.out.println("    🔎 Ищем поле с температурой...");
+
+        // Сначала ищем temperature_c (для ClimateSensorProto)
+        if (record.hasField("temperature_c")) {
+            temperatureObj = record.get("temperature_c");
+            foundField = "temperature_c";
+            System.out.println("    ✅ Найдена температура в поле 'temperature_c': " + temperatureObj);
+        }
+        // Затем temperatureC (для TemperatureSensorProto)
+        else if (record.hasField("temperatureC")) {
+            temperatureObj = record.get("temperatureC");
+            foundField = "temperatureC";
+            System.out.println("    ✅ Найдена температура в поле 'temperatureC': " + temperatureObj);
+        }
+        // Затем temperature
+        else if (record.hasField("temperature")) {
+            temperatureObj = record.get("temperature");
+            foundField = "temperature";
+            System.out.println("    ✅ Найдена температура в поле 'temperature': " + temperatureObj);
+        }
+        // Затем temp
+        else if (record.hasField("temp")) {
+            temperatureObj = record.get("temp");
+            foundField = "temp";
+            System.out.println("    ✅ Найдена температура в поле 'temp': " + temperatureObj);
+        }
+        // Затем value
+        else if (record.hasField("value")) {
+            temperatureObj = record.get("value");
+            foundField = "value";
+            System.out.println("    ✅ Найдена температура в поле 'value': " + temperatureObj);
         }
 
         // Если не нашли в стандартных полях, ищем любое числовое поле
@@ -281,7 +305,7 @@ public class HandlerEventImpl implements HandlerEvent {
             System.out.println("    🔎 Температура не найдена в стандартных полях, ищем любое числовое поле...");
             for (String field : availableFields) {
                 Object value = record.get(field);
-                if (value instanceof Number) {
+                if (value instanceof Integer || value instanceof Long || value instanceof Float || value instanceof Double) {
                     temperatureObj = value;
                     foundField = field;
                     System.out.println("    🎯 Используем поле '" + field + "' как температуру: " + value);
@@ -293,10 +317,8 @@ public class HandlerEventImpl implements HandlerEvent {
 
         if (temperatureObj == null) {
             System.out.println("    ❌ ТЕМПЕРАТУРА НЕ НАЙДЕНА");
-            System.out.println("    Стандартные поля: " + Arrays.toString(TEMPERATURE_FIELDS));
             System.out.println("    Доступные поля: " + availableFields);
-            log.warn("❌ Температура не найдена. Стандартные поля: {}. Доступные поля: {}",
-                    Arrays.toString(TEMPERATURE_FIELDS), availableFields);
+            log.warn("❌ Температура не найдена в полях: {}", availableFields);
             return false;
         }
 
