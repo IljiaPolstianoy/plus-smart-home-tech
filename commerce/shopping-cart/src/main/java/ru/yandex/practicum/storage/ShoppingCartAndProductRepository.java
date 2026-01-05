@@ -10,7 +10,7 @@ public interface ShoppingCartAndProductRepository extends JpaRepository<Shopping
 
     List<ShoppingCartAndProduct> findByShoppingCart_ShoppingCartId(String shoppingCartId);
 
-    boolean removeShoppingCartAndProductByProduct_ProductIdAndShoppingCart_UserName(String productName, String userName);
+    boolean removeAllShoppingCartAndProductByProduct_ProductIdInAndShoppingCart_UserName(List<String> productName, String userName);
 
-    Optional<ShoppingCartAndProduct> findByProduct_ProductId(String productId);
+    Optional<ShoppingCartAndProduct> findByShoppingCart_UserNameAndProduct_ProductId(String userName, String productId);
 }

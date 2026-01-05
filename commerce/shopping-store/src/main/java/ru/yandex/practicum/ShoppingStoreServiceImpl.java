@@ -22,23 +22,23 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
     private final ShoppingStoreRepository shoppingStoreRepository;
 
     @Override
-    public Page<ProductDto> getProducts(Pageable pageable, ProductCategory category) {
+    public Page<ProductDto> getProducts(final Pageable pageable, final ProductCategory category) {
         return shoppingStoreRepository.findAllByProductCategory(pageableConverter(pageable), category);
     }
 
     @Override
-    public ProductDto createProduct(ProductDto productDto) {
+    public ProductDto createProduct(final ProductDto productDto) {
         return shoppingStoreRepository.save(productDto);
     }
 
     @Override
-    public ProductDto updateProduct(ProductDto productDto) {
+    public ProductDto updateProduct(final ProductDto productDto) {
         return shoppingStoreRepository.save(productDto);
     }
 
     @Override
-    public boolean deleteProduct(String productId) {
-        ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(productId).orElseThrow(() -> new ProductNotFoundException(
+    public boolean deleteProduct(final String productId) {
+        final ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(productId).orElseThrow(() -> new ProductNotFoundException(
                 "Товар с ID '" + productId + "' не найден",
                 "Искомый товар отсутствует в системе. Проверьте ID.",
                 "404 NOT_FOUND"
@@ -49,7 +49,7 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
     }
 
     @Override
-    public boolean updateQuantityStateProduct(SetProductQuantityStateRequest setProductQuantityStateRequest) {
+    public boolean updateQuantityStateProduct(final SetProductQuantityStateRequest setProductQuantityStateRequest) {
         final ProductDto productDto = shoppingStoreRepository.getProductDtoByProductId(setProductQuantityStateRequest.getProductId())
                 .orElseThrow(() -> new ProductNotFoundException(
                         "Товар с ID '" + setProductQuantityStateRequest.getProductId() + "' не найден",
@@ -62,7 +62,7 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
     }
 
     @Override
-    public ProductDto getProduct(String productId) {
+    public ProductDto getProduct(final String productId) {
         return shoppingStoreRepository.getProductDtoByProductId(productId).orElseThrow(() -> new ProductNotFoundException(
                 "Товар с ID '" + productId + "' не найден",
                 "Искомый товар отсутствует в системе. Проверьте ID.",
@@ -70,34 +70,34 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
         ));
     }
 
-    private org.springframework.data.domain.Pageable pageableConverter(Pageable customPageable) {
+    private org.springframework.data.domain.Pageable pageableConverter(final Pageable customPageable) {
         if (customPageable == null) {
             return PageRequest.of(0, 20); // Значения по умолчанию
         }
 
         // Валидация page и size
-        int page = customPageable.getPage();
-        int size = customPageable.getSize();
+        final int page = customPageable.getPage();
+        final int size = customPageable.getSize();
 
         // Создание объекта сортировки
-        Sort sort = createSort(customPageable.getSort());
+        final Sort sort = createSort(customPageable.getSort());
 
         return PageRequest.of(page, size, sort);
     }
 
-    private Sort createSort(List<String> sortStrings) {
+    private Sort createSort(final List<String> sortStrings) {
         if (sortStrings == null || sortStrings.isEmpty()) {
             return Sort.unsorted();
         }
 
-        List<Sort.Order> orders = new ArrayList<>();
+        final List<Sort.Order> orders = new ArrayList<>();
 
         for (String sortString : sortStrings) {
             if (!StringUtils.hasText(sortString)) {
                 continue;
             }
 
-            Sort.Order order = parseSortOrder(sortString.trim());
+           final Sort.Order order = parseSortOrder(sortString.trim());
             if (order != null) {
                 orders.add(order);
             }
@@ -108,14 +108,14 @@ public class ShoppingStoreServiceImpl implements ShoppingStoreService {
     /**
      * Парсит строку сортировки в объект Order
      */
-    private Sort.Order parseSortOrder(String sortString) {
-        String[] parts = sortString.split(",");
+    private Sort.Order parseSortOrder(final String sortString) {
+        final String[] parts = sortString.split(",");
 
         if (parts.length == 0 || !StringUtils.hasText(parts[0])) {
             return null;
         }
 
-        String field = parts[0].trim();
+        final String field = parts[0].trim();
 
         // По умолчанию сортировка по возрастанию
         Sort.Direction direction = Sort.Direction.ASC;

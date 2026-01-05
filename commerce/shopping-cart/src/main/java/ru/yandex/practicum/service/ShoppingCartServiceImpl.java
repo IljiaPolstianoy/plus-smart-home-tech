@@ -1,13 +1,14 @@
 package ru.yandex.practicum.service;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.error.ErrorWhenDeletingAnItemFromTheShoppingCart;
-import ru.yandex.practicum.error.ShoppingCartDeactivate;
 import ru.yandex.practicum.feign.WarehouseFeignClient;
+import ru.yandex.practicum.model.error.ErrorWhenDeletingAnItemFromTheShoppingCart;
+import ru.yandex.practicum.model.error.NoProductsInShoppingCartException;
+import ru.yandex.practicum.model.error.ShoppingCartDeactivate;
 import ru.yandex.practicum.model.product.ProductDto;
+import ru.yandex.practicum.model.quantity.ChangeProductQuantityRequest;
 import ru.yandex.practicum.model.shopping.*;
 import ru.yandex.practicum.storage.ProductRepository;
 import ru.yandex.practicum.storage.ShoppingCartAndProductRepository;
@@ -31,7 +32,12 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
         final ShoppingCart shoppingCart = getShoppingCart(userName);
 
-        final List<ShoppingCartAndProduct> shoppingCartAndProducts = shoppingCartAndProductRepository.findByShoppingCart_ShoppingCartId(shoppingCart.getShoppingCartId());
+        if (shoppingCart.getShoppingCartState().equals(ShoppingCartState.DELIVERED)) {
+            throw new ShoppingCartDeactivate("Корзина с id " + shoppingCart.getShoppingCartId() + " неактивна");
+        }
+
+        final List<ShoppingCartAndProduct> shoppingCartAndProducts = shoppingCartAndProductRepository
+                .findByShoppingCart_ShoppingCartId(shoppingCart.getShoppingCartId());
 
         final List<ProductInCat> products = new ArrayList<>();
 
@@ -48,7 +54,10 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public Optional<ShoppingCartDto> addProductsInShoppingCart(String userName, ProductInCat productInCat) {
+    public Optional<ShoppingCartDto> addProductsInShoppingCart(
+            final String userName,
+            final List<ChangeProductQuantityRequest> changeProductQuantityRequests
+    ) {
 
         final ShoppingCart shoppingCart = getShoppingCart(userName);
 
@@ -57,24 +66,33 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         }
 
         final ShoppingCartDto shoppingCartDtoForCheckQuantity = findShoppingCart(userName).get();
-        shoppingCartDtoForCheckQuantity.addProduct(productInCat);
+        final List<ProductInCat> productsInShoppingCart = new ArrayList<>();
+        for (ChangeProductQuantityRequest changeProductQuantityRequest : changeProductQuantityRequests) {
+            productsInShoppingCart.add(
+                    new ProductInCat(
+                            changeProductQuantityRequest.getProductId(),
+                            changeProductQuantityRequest.getQuantity()
+                    )
+            );
+        }
+        shoppingCartDtoForCheckQuantity.addProduct(productsInShoppingCart);
         warehouseFeignClient.checkQuantity(shoppingCartDtoForCheckQuantity);
 
-        final ProductDto productDto = productRepository.findByProductId(productInCat.getProductId()).orElse(null);
+        for (ChangeProductQuantityRequest changeProductQuantityRequest : changeProductQuantityRequests) {
+            final ShoppingCartAndProduct shoppingCartAndProduct = ShoppingCartAndProduct.builder()
+                    .product(productRepository.findByProductId(changeProductQuantityRequest.getProductId()).get())
+                    .shoppingCart(shoppingCart)
+                    .quantity(changeProductQuantityRequest.getQuantity())
+                    .build();
+            shoppingCartAndProductRepository.save(shoppingCartAndProduct);
+        }
 
-        final ShoppingCartAndProduct shoppingCartAndProductNew = ShoppingCartAndProduct.builder()
-                .shoppingCart(shoppingCart)
-                .product(productDto)
-                .quantity(productInCat.getQuantity())
-                .build();
-
-        shoppingCartAndProductRepository.save(shoppingCartAndProductNew);
 
         return findShoppingCart(userName);
     }
 
     @Override
-    public boolean removeShoppingCart(String userName) {
+    public boolean removeShoppingCart(final String userName) {
 
         final ShoppingCart shoppingCart = getShoppingCart(userName);
 
@@ -85,19 +103,39 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public Optional<ShoppingCartDto> removeProductsInShoppingCart(String userName, String productName) {
-        if (!shoppingCartAndProductRepository.removeShoppingCartAndProductByProduct_ProductIdAndShoppingCart_UserName(productName, userName)) {
-            throw new ErrorWhenDeletingAnItemFromTheShoppingCart("Ошибка при удаление товара с id " + productName + " в корзине пользователя " + userName);
+    public Optional<ShoppingCartDto> removeProductsInShoppingCart(
+            final String userName,
+            final List<String> productName
+    ) {
+        checkProductsInCat(userName, productName);
+        if (!shoppingCartAndProductRepository
+                .removeAllShoppingCartAndProductByProduct_ProductIdInAndShoppingCart_UserName(productName, userName)) {
+            throw new ErrorWhenDeletingAnItemFromTheShoppingCart(
+                    "Ошибка при удаление товара с id "
+                            + productName
+                            + " в корзине пользователя "
+                            + userName
+            );
         }
         return findShoppingCart(userName);
     }
 
     @Override
-    public Optional<ShoppingCartDto> changeQuantityInShoppingCart(String userName, ProductInCat productInCat) {
+    public Optional<ShoppingCartDto> changeQuantityInShoppingCart(
+            final String userName,
+            final ChangeProductQuantityRequest changeProductQuantityRequest
+    ) {
+        final ShoppingCartAndProduct shoppingCartAndProduct = shoppingCartAndProductRepository
+                .findByShoppingCart_UserNameAndProduct_ProductId(
+                        userName,
+                        changeProductQuantityRequest.getProductId()
+                ).orElseThrow(() -> new NoProductsInShoppingCartException(
+                        "Корзина пуста",
+                        "В вашей корзине нет товаров с id " + changeProductQuantityRequest.getProductId() + ".",
+                        "400 BAD_REQUEST"
+                ));
 
-        final ShoppingCartAndProduct shoppingCartAndProduct = shoppingCartAndProductRepository.findByProduct_ProductId(productInCat.getProductId()).orElse(null);
-
-        shoppingCartAndProduct.setQuantity(productInCat.getQuantity());
+        shoppingCartAndProduct.setQuantity(changeProductQuantityRequest.getQuantity());
         shoppingCartAndProductRepository.save(shoppingCartAndProduct);
 
         return findShoppingCart(userName);
@@ -110,10 +148,35 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         return shoppingCartOptional.orElse(createShoppingCart(userName));
     }
 
-    private ShoppingCart createShoppingCart(String userName) {
+    private ShoppingCart createShoppingCart(final String userName) {
         final ShoppingCart shoppingCart = new ShoppingCart();
         shoppingCart.setUserName(userName);
         shoppingCart.setShoppingCartState(ShoppingCartState.ACTIVE);
         return shoppingCartRepository.save(shoppingCart);
+    }
+
+    private boolean checkProductsInCat(
+            final String userName,
+            final List<String> productName
+    ) {
+
+        final List<ShoppingCartAndProduct> shoppingCartAndProducts = shoppingCartAndProductRepository
+                .findByShoppingCart_ShoppingCartId(userName);
+        final List<String> products = shoppingCartAndProducts.stream()
+                .map(ShoppingCartAndProduct::getProduct)
+                .map(ProductDto::getProductId)
+                .toList();
+        if (!products.containsAll(productName)) {
+            // Находим недостающие товары
+            final List<String> missingProducts = new ArrayList<>(productName);
+            missingProducts.removeAll(products);
+
+            throw new NoProductsInShoppingCartException(
+                    "Следующие товары не найдены: " + missingProducts,
+                    "Товары не найдены: " + String.join(", ", missingProducts),
+                    "BAD_REQUEST"
+            );
+        }
+        return true;
     }
 }

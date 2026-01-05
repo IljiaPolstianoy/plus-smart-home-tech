@@ -20,17 +20,17 @@ public class WareHouseController implements WarehouseFeignClient {
     private final WareHouseService wareHouseService;
 
     @PutMapping
-    public boolean create(@RequestBody NewProductInWarehouseRequest newProductInWarehouseRequest) {
+    public boolean create(@RequestBody final NewProductInWarehouseRequest newProductInWarehouseRequest) {
         return wareHouseService.create(newProductInWarehouseRequest);
     }
 
     @PostMapping("/check")
-    public BookedProductsDto checkQuantity(@RequestBody ShoppingCartDto shoppingCartDto) {
+    public BookedProductsDto checkQuantity(@RequestBody final ShoppingCartDto shoppingCartDto) {
         return wareHouseService.checkQuantity(shoppingCartDto);
     }
 
     @PostMapping("/add")
-    public boolean addProductOnWareHouse(@RequestBody AddProductToWarehouseRequest addProductToWarehouseRequest) {
+    public boolean addProductOnWareHouse(@RequestBody final AddProductToWarehouseRequest addProductToWarehouseRequest) {
         return wareHouseService.addProductInWareHouse(addProductToWarehouseRequest);
     }
 

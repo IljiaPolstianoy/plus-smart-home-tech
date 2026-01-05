@@ -20,7 +20,7 @@ public class ShoppingCartDto {
     @NotNull
     private List<ProductInCat> products;
 
-    public boolean addProduct(ProductInCat productInCat) {
-        return products.add(productInCat);
+    public boolean addProduct(List<ProductInCat> productInCats) {
+        return products.addAll(productInCats);
     }
 }

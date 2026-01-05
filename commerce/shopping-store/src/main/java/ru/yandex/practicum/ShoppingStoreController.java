@@ -22,34 +22,34 @@ public class ShoppingStoreController implements ShoppingStoreFeignClient {
 
     @GetMapping
     public Page<ProductDto> getProducts(
-            @Valid @ModelAttribute Pageable pageable,
-            @RequestBody ProductCategory category
+            @Valid @ModelAttribute final Pageable pageable,
+            @RequestBody final ProductCategory category
     ) {
         return shoppingStoreService.getProducts(pageable, category);
     }
 
     @PutMapping
-    public ProductDto createProduct(@Valid @RequestBody ProductDto productDto) {
+    public ProductDto createProduct(@Valid @RequestBody final ProductDto productDto) {
         return shoppingStoreService.createProduct(productDto);
     }
 
     @PostMapping
-    public ProductDto updateProduct(@Valid @RequestBody ProductDto productDto) {
+    public ProductDto updateProduct(@Valid @RequestBody final ProductDto productDto) {
         return shoppingStoreService.updateProduct(productDto);
     }
 
     @PostMapping("/removeProductFromStore")
-    public boolean removeProductFromStore(@NotNull @RequestBody String productId) {
+    public boolean removeProductFromStore(@NotNull @RequestBody final String productId) {
         return shoppingStoreService.deleteProduct(productId);
     }
 
     @PostMapping("/quantityState")
-    public boolean updateQuantityState(@NotNull @RequestBody SetProductQuantityStateRequest setProductQuantityStateRequest) {
+    public boolean updateQuantityState(@NotNull @RequestBody final SetProductQuantityStateRequest setProductQuantityStateRequest) {
         return shoppingStoreService.updateQuantityStateProduct(setProductQuantityStateRequest);
     }
 
     @GetMapping("/{productId}")
-    public ProductDto getProduct(@NotNull @PathVariable String productId) {
+    public ProductDto getProduct(@NotNull @PathVariable final String productId) {
         return shoppingStoreService.getProduct(productId);
     }
 }

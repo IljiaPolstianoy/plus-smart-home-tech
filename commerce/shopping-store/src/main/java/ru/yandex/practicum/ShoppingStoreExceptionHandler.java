@@ -23,7 +23,6 @@ public class ShoppingStoreExceptionHandler {
         errorResponse.put("httpStatus", ex.getHttpStatus());
         errorResponse.put("localizedMessage", ex.getLocalizedMessage());
 
-        // При желании можно добавить cause/suppressed (но осторожно — может быть много данных)
         if (ex.getErrorCause() != null) {
             errorResponse.put("cause", ex.getErrorCause());
         }

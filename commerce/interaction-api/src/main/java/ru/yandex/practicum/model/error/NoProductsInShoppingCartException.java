@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class ProductInShoppingCartLowQuantityInWarehouseException extends RuntimeException {
+public class NoProductsInShoppingCartException extends RuntimeException {
 
     @JsonProperty("cause")
     private Cause errorCause;
@@ -38,6 +38,7 @@ public class ProductInShoppingCartLowQuantityInWarehouseException extends Runtim
     @JsonProperty("suppressed")
     private List<Cause> suppressedCauses;
 
+    // Вложенная структура StackTraceElement
     @Getter
     @Setter
     @NoArgsConstructor
@@ -69,6 +70,7 @@ public class ProductInShoppingCartLowQuantityInWarehouseException extends Runtim
         private Boolean nativeMethod;
     }
 
+    // Вложенная структура Cause
     @Getter
     @Setter
     @NoArgsConstructor
@@ -85,11 +87,12 @@ public class ProductInShoppingCartLowQuantityInWarehouseException extends Runtim
         private String localizedMessage;
     }
 
-    public ProductInShoppingCartLowQuantityInWarehouseException(String message) {
+    // Конструкторы
+    public NoProductsInShoppingCartException(String message) {
         super(message);
     }
 
-    public ProductInShoppingCartLowQuantityInWarehouseException(
+    public NoProductsInShoppingCartException(
             String message, Throwable cause) {
         super(message, cause);
         this.errorCause = new Cause();
@@ -97,7 +100,7 @@ public class ProductInShoppingCartLowQuantityInWarehouseException extends Runtim
         this.errorCause.setLocalizedMessage(cause.getLocalizedMessage());
     }
 
-    public ProductInShoppingCartLowQuantityInWarehouseException(
+    public NoProductsInShoppingCartException(
             String message, String userMessage, String httpStatus) {
         super(message);
         this.userMessage = userMessage;

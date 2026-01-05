@@ -1,4 +1,4 @@
-package ru.yandex.practicum;
+package ru.yandex.practicum.error;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
@@ -6,7 +6,6 @@ import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.model.error.ProductInShoppingCartLowQuantityInWarehouseException;
-
 
 import java.nio.charset.StandardCharsets;
 

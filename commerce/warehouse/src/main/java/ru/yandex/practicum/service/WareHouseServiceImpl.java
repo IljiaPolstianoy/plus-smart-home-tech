@@ -20,13 +20,15 @@ public class WareHouseServiceImpl implements WareHouseService {
     private final WareHouseRepository wareHouseRepository;
     private final ProductQuantityRepository productQuantityRepository;
 
-    public WareHouseServiceImpl(WareHouseRepository wareHouseRepository, ProductQuantityRepository productQuantityRepository) {
+    public WareHouseServiceImpl(
+            final WareHouseRepository wareHouseRepository,
+            final ProductQuantityRepository productQuantityRepository) {
         this.wareHouseRepository = wareHouseRepository;
         this.productQuantityRepository = productQuantityRepository;
     }
 
     @Override
-    public boolean addProductInWareHouse(AddProductToWarehouseRequest addProductToWarehouseRequest) {
+    public boolean addProductInWareHouse(final AddProductToWarehouseRequest addProductToWarehouseRequest) {
         final String productId = addProductToWarehouseRequest.getProductId();
 
         if (!wareHouseRepository.findByProductId(productId)) {
@@ -42,7 +44,7 @@ public class WareHouseServiceImpl implements WareHouseService {
             productQuantityOption.get().addQuantity(addProductToWarehouseRequest.getQuantity());
             productQuantityRepository.save(productQuantityOption.get());
         } else {
-            ProductQuantity productQuantity = new ProductQuantity();
+            final ProductQuantity productQuantity = new ProductQuantity();
             productQuantity.setProductQuantityId(productId);
             productQuantity.setQuantity(addProductToWarehouseRequest.getQuantity());
             productQuantityRepository.save(productQuantity);
@@ -62,7 +64,7 @@ public class WareHouseServiceImpl implements WareHouseService {
     }
 
     @Override
-    public boolean create(NewProductInWarehouseRequest newProductInWarehouseRequest) {
+    public boolean create(final NewProductInWarehouseRequest newProductInWarehouseRequest) {
         final ProductsInWarehouse productsInWarehouse = ProductsInWarehouse.builder()
                 .productId(newProductInWarehouseRequest.getProductId())
                 .fragile(newProductInWarehouseRequest.isFragile())
@@ -85,7 +87,7 @@ public class WareHouseServiceImpl implements WareHouseService {
     }
 
     @Override
-    public BookedProductsDto checkQuantity(ShoppingCartDto shoppingCartDto) {
+    public BookedProductsDto checkQuantity(final ShoppingCartDto shoppingCartDto) {
 
         BigDecimal deliveryWeight = BigDecimal.ZERO;
         BigDecimal deliveryVolume = BigDecimal.ZERO;
@@ -107,12 +109,12 @@ public class WareHouseServiceImpl implements WareHouseService {
 
             final ProductsInWarehouse product = productQuantity.getProductsInWarehouse();
 
-            BigDecimal weightForThisProduct = product.getWeight()
+            final BigDecimal weightForThisProduct = product.getWeight()
                     .multiply(BigDecimal.valueOf(productQuantity.getQuantity()));
 
             deliveryWeight = deliveryWeight.add(weightForThisProduct);
 
-            BigDecimal volumeForThisProduct = product.getWidth()
+            final BigDecimal volumeForThisProduct = product.getWidth()
                     .multiply(product.getHeight())
                     .multiply(product.getDepth())
                     .multiply(BigDecimal.valueOf(productQuantity.getQuantity()));
@@ -132,8 +134,8 @@ public class WareHouseServiceImpl implements WareHouseService {
     }
 
     private ProductQuantity getProductQuantityForCheck(
-            ProductInCat productInCat,
-            Optional<ProductQuantity> productQuantityOptional
+            final ProductInCat productInCat,
+            final Optional<ProductQuantity> productQuantityOptional
     ) {
         if (
                 productQuantityOptional.isPresent()
