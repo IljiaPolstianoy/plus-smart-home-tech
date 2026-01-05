@@ -14,7 +14,7 @@ public class Action {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "type", length = Integer.MAX_VALUE)
+    @Column(name = "type", length = 255)
     private String type;
 
     @Column(name = "value")

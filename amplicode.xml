@@ -7,6 +7,22 @@
           <package value="ru.yandex.practicum" />
         </packages>
       </persistence-unit>
+      <persistence-unit moduleName="shopping-cart" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="interaction-api" name="Default" />
+      <persistence-unit moduleName="shopping-store" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="warehouse" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
     </persistence-units>
   </component>
 </project>

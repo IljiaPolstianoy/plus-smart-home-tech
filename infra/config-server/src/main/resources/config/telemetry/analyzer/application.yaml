@@ -1,57 +1,60 @@
-# Конфигурация для Analyzer в Config Server
 spring:
   datasource:
-    url: jdbc:h2:mem:analyzerdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-    hikari:
-      maximum-pool-size: 5
+    url: jdbc:postgresql://localhost:5432/analyzer-smart-home
+    username: dbuser
+    password: 12345
+    driver-class-name: org.postgresql.Driver
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: update
-    show-sql: false
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
 
   kafka:
-    bootstrap-servers: localhost:9092
     consumer:
       group-id: analyzer-group
       auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       enable-auto-commit: false
+    properties:
+      schema.registry.url: http://localhost:8081
+      specific.avro.reader: true
 
-# Eureka
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    enabled: true
-    fetch-registry: true
-    register-with-eureka: true
-  instance:
-    hostname: localhost
-    prefer-ip-address: false
-
-# gRPC
 grpc:
   client:
     hub-router:
-      address: "static://localhost:59091"
+      address: static://localhost:59090
       negotiation-type: plaintext
-      enableKeepAlive: true
-      keepAliveWithoutCalls: true
+      enable-keep-alive: true
+      keep-alive-without-calls: true
+  server:
+    port: 9094
 
-# Настройки процессоров
-processor:
-  initialization:
-    timeout: 20000
-  poll:
-    timeout: 1000
-
-# Логирование
 logging:
   level:
-    ru.yandex.practicum: INFO
-    org.springframework: INFO
-    com.netflix.discovery: WARN
+    ru.yandex.practicum: DEBUG
+    ru.yandex.practicum.processor: TRACE
+    ru.yandex.practicum.handler: TRACE
+    ru.yandex.practicum.repository: DEBUG
+
+    org.apache.kafka: INFO
+    org.springframework.kafka: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+  file:
+    name: logs/analyzer.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 0
