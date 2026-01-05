@@ -5,6 +5,14 @@ grpc:
   server:
     port: 9091
 
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: aggregator-group-ci
+      auto-offset-reset: earliest
+    producer:
+
 logging:
   level:
     # AggregationStarter - максимальное логирование
@@ -38,14 +46,3 @@ logging:
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
-
-    # src/main/resources/application-ci.yml (или используйте переменные окружения)
-    spring:
-      kafka:
-        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-        # Убедитесь, что эти настройки корректны
-        consumer:
-          group-id: aggregator-group-ci
-          auto-offset-reset: earliest  # Важно: читать с начала при первом запуске
-        producer:
-        # Настройки по умолчанию обычно работают

@@ -13,7 +13,7 @@ import java.util.Set;
 @Component
 public class KafkaTopicInitializer {
 
-    @Value("${spring.kafka.bootstrap-servers}")
+    @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
     private String bootstrapServers;
 
     @PostConstruct
