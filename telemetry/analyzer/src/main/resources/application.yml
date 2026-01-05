@@ -18,7 +18,7 @@ spring:
 grpc:
   client:
     hub-router:
-      address: static://localhost:59090  # Прямой адрес пока
+      address: static://localhost:59091
       negotiation-type: plaintext
 
 # Настройки Kafka

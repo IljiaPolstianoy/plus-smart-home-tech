@@ -162,26 +162,39 @@ public class HubEventProcessor implements Runnable {
     private void processScenarioAdded(String hubId, ru.yandex.practicum.kafka.telemetry.event.ScenarioAddedEventAvro scenarioAdded) {
         String scenarioName = scenarioAdded.getName();
 
+        log.info("🔄 Обработка добавления сценария '{}' для хаба {}", scenarioName, hubId);
+
+        // Удаляем старый сценарий если есть
         Optional<Scenario> existingScenario = scenarioRepository.findByHubIdAndName(hubId, scenarioName);
         if (existingScenario.isPresent()) {
             log.info("Сценарий '{}' уже существует в хабе {}. Обновляем...", scenarioName, hubId);
-            processScenarioRemoved(hubId,
-                    ru.yandex.practicum.kafka.telemetry.event.ScenarioRemovedEventAvro.newBuilder()
-                            .setName(scenarioName)
-                            .build());
+            scenarioConditionRepository.deleteByScenarioId(existingScenario.get().getId());
+            scenarioActionRepository.deleteByScenarioId(existingScenario.get().getId());
+            scenarioRepository.delete(existingScenario.get());
+            scenarioRepository.flush();
         }
 
+        // Создаем новый сценарий
         Scenario scenario = new Scenario();
         scenario.setHubId(hubId);
         scenario.setName(scenarioName);
         Scenario savedScenario = scenarioRepository.save(scenario);
         scenarioRepository.flush();
 
-        processScenarioConditions(savedScenario, scenarioAdded.getConditions());
-        processScenarioActions(savedScenario, scenarioAdded.getActions());
+        // Обрабатываем условия
+        if (scenarioAdded.getConditions() != null) {
+            processScenarioConditions(savedScenario, scenarioAdded.getConditions());
+        }
 
-        log.info("Добавлен сценарий '{}' в хаб {} с {} условиями и {} действиями",
-                scenarioName, hubId, scenarioAdded.getConditions().size(), scenarioAdded.getActions().size());
+        // Обрабатываем действия
+        if (scenarioAdded.getActions() != null) {
+            processScenarioActions(savedScenario, scenarioAdded.getActions());
+        }
+
+        log.info("✅ Добавлен сценарий '{}' в хаб {} с {} условиями и {} действиями",
+                scenarioName, hubId,
+                scenarioAdded.getConditions() != null ? scenarioAdded.getConditions().size() : 0,
+                scenarioAdded.getActions() != null ? scenarioAdded.getActions().size() : 0);
     }
 
     private void processScenarioConditions(Scenario scenario, java.util.List<ru.yandex.practicum.kafka.telemetry.event.ScenarioConditionAvro> conditions) {
