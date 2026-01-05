@@ -1,0 +1,16 @@
+# В aggregator/src/main/resources/application-ci.yml
+logging:
+  level:
+    # Максимальное логирование для агрегатора
+    ru.yandex.practicum.Aggregator: DEBUG
+    ru.yandex.practicum.processor.SnapshotProcessor: DEBUG
+    ru.yandex.practicum.aggregation.SnapshotAggregator: DEBUG
+
+    # Логирование Kafka
+    org.springframework.kafka: DEBUG
+    org.apache.kafka.clients.producer: DEBUG
+    org.apache.kafka.clients.consumer: DEBUG
+
+    # Сериализация
+    ru.yandex.practicum.mapping.SensorEventDeserializer: DEBUG
+    ru.yandex.practicum.mapping.SensorSnapshotSerializer: DEBUG
