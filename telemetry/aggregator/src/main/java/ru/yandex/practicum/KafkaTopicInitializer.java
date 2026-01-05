@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,70 +30,58 @@ public class KafkaTopicInitializer {
 
     @PostConstruct
     public void init() {
-        // Проверяем, запущен ли CI или тестовый режим
-        boolean isCi = "true".equals(System.getenv("CI")) ||
-                "true".equals(System.getenv("GITHUB_ACTIONS"));
-
-        // Проверяем активные профили
+        // Определяем окружение
         String[] activeProfiles = environment.getActiveProfiles();
-        boolean isTestProfile = false;
-        for (String profile : activeProfiles) {
-            if (profile.contains("test") || profile.contains("ci")) {
-                isTestProfile = true;
-                break;
-            }
-        }
+        boolean isCi = Arrays.stream(activeProfiles).anyMatch(p -> p.equals("ci"));
+        boolean isTest = Arrays.stream(activeProfiles).anyMatch(p -> p.equals("test"));
 
-        // В CI/тестах пропускаем создание топиков
-        if (isCi || isTestProfile) {
-            log.info("Skipping Kafka topic initialization in CI/test mode");
+        log.info("KafkaTopicInitializer starting. Profiles: {}, Bootstrap: {}",
+                Arrays.toString(activeProfiles), bootstrapServers);
+
+        // В CI/Test средах пропускаем создание топиков
+        if (isCi || isTest) {
+            log.info("Skipping topic initialization in CI/Test mode. Kafka: {}", bootstrapServers);
             return;
         }
 
-        log.info("Initializing Kafka topics with bootstrap servers: {}", bootstrapServers);
-
-        try {
-            // Быстрая проверка доступности Kafka
-            if (!isKafkaAvailable()) {
-                log.warn("Kafka is not available at {}. Skipping topic initialization.", bootstrapServers);
-                return;
-            }
-
-            try (AdminClient admin = AdminClient.create(Map.of(
-                    AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
-                    AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000
-            ))) {
-                ListTopicsResult topics = admin.listTopics();
-                Set<String> topicNames = topics.names().get(5, TimeUnit.SECONDS);
-
-                if (!topicNames.contains("telemetry.snapshots.v1")) {
-                    NewTopic newTopic = new NewTopic("telemetry.snapshots.v1", 1, (short) 1);
-                    admin.createTopics(List.of(newTopic)).all().get(10, TimeUnit.SECONDS);
-                    log.info("Topic telemetry.snapshots.v1 created");
-                } else {
-                    log.info("Topic telemetry.snapshots.v1 already exists");
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error during Kafka topic initialization: {}", e.getMessage());
-            // Не падаем, позволяем приложению запуститься
-            // В CI это нормально, так как Kafka может быть недоступна
+        // Проверяем, что Kafka доступна
+        if (!isKafkaAvailable()) {
+            log.warn("Kafka not available at {}. Skipping topic initialization.", bootstrapServers);
+            return;
         }
+
+        createTopicIfNotExists();
     }
 
     private boolean isKafkaAvailable() {
-        // Простая проверка формата адреса
-        if (bootstrapServers == null || bootstrapServers.trim().isEmpty()) {
-            log.warn("Kafka bootstrap servers not configured");
+        // Простая проверка - если адрес localhost:9099 (тестовый), считаем что Kafka есть
+        if (bootstrapServers.contains(":9099") ||
+                bootstrapServers.contains("dummy") ||
+                System.getenv("CI") != null) {
+            // В CI тестах Kafka работает, но создание топиков не нужно
             return false;
         }
-
-        // В CI всегда возвращаем false, чтобы не пытаться подключаться
-        if ("true".equals(System.getenv("CI")) ||
-                "true".equals(System.getenv("GITHUB_ACTIONS"))) {
-            return false;
-        }
-
         return true;
+    }
+
+    private void createTopicIfNotExists() {
+        try (AdminClient admin = AdminClient.create(Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
+                AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000
+        ))) {
+            ListTopicsResult topics = admin.listTopics();
+            Set<String> topicNames = topics.names().get(5, TimeUnit.SECONDS);
+
+            if (!topicNames.contains("telemetry.snapshots.v1")) {
+                NewTopic newTopic = new NewTopic("telemetry.snapshots.v1", 1, (short) 1);
+                admin.createTopics(List.of(newTopic)).all().get(10, TimeUnit.SECONDS);
+                log.info("Topic telemetry.snapshots.v1 created");
+            } else {
+                log.info("Topic telemetry.snapshots.v1 already exists");
+            }
+        } catch (Exception e) {
+            log.error("Error creating Kafka topic: {}", e.getMessage());
+            // НЕ падаем, позволяем приложению работать
+        }
     }
 }

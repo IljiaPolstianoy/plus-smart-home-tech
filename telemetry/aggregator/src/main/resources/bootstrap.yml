@@ -1,15 +1,22 @@
 spring:
+  application:
+    name: aggregator
+
+  # Настройки для Config Server
   cloud:
     config:
-      enabled: ${CONFIG_SERVER_ENABLED:true}
+      enabled: true
       fail-fast: false
+      retry:
+        max-attempts: 3
+        initial-interval: 1000
+      uri: ""
+      discovery:
+        enabled: true
+        service-id: config-server
 
-  # Значения по умолчанию для локальной разработки
+  # Локальные значения по умолчанию на случай если Config Server не ответит
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-
-# Отключаем инициализатор в CI
-kafka:
-  topic:
-    initializer:
-      enabled: ${KAFKA_TOPIC_INITIALIZER_ENABLED:true}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:aggregator-group}
