@@ -2,14 +2,13 @@ spring:
   application:
     name: collector
   config:
-    import: "configserver:"
+    import: "optional:configserver:"
   cloud:
     config:
       discovery:
         enabled: true
-        serviceId: config-server
-
+        service-id: config-server
 eureka:
   client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+    service-url:
+      default-zone: http://localhost:8761/eureka/
