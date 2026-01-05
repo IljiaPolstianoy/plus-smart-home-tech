@@ -8,7 +8,9 @@ spring:
       discovery:
         enabled: true
         serviceId: config-server
+        preferred-instance-id: config-server
       fail-fast: false
+      uri: ""
 
 eureka:
   client:
