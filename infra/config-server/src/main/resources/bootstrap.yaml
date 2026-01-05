@@ -6,5 +6,4 @@ spring:
       server:
         native:
           search-locations:
-            - "classpath:/config/telemetry/{application}"
             - "classpath:/config/commerce/{application}"

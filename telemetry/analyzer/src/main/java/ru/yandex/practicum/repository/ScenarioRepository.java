@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.yandex.practicum.model.Scenario;
 import ru.yandex.practicum.model.ScenarioProjection;
+import ru.yandex.practicum.model.ScenarioWithDetails;
 
 import java.util.List;
 import java.util.Optional;

@@ -5,14 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.handler.HandlerEvent;
 import ru.yandex.practicum.kafka.telemetry.event.SensorsSnapshotAvro;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
@@ -20,124 +18,69 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SnapshotProcessor implements Runnable {
     private final KafkaConsumer<String, SensorsSnapshotAvro> snapshotConsumer;
     private final HandlerEvent handlerEvent;
-
-    private final AtomicBoolean running = new AtomicBoolean(true);
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private volatile boolean running = true;
     private Thread processorThread;
-
-    @Value("${processor.initialization.timeout:15000}")
-    private long initializationTimeout;
-
-    @Value("${processor.poll.timeout:1000}")
-    private long pollTimeout;
 
     @Override
     public void run() {
-        System.out.println("\n\n=== GITHUB_DEBUG_SNAPSHOT_PROCESSOR_START ===");
-        System.out.println("🚀 SnapshotProcessor ЗАПУЩЕН!");
-        System.out.println("Thread: " + Thread.currentThread().getName());
-        System.out.println("HandlerEvent: " + (handlerEvent != null ? "OK" : "NULL"));
-        System.out.println("Initialized: " + initialized.get());
-
-        // Ждем инициализации перед стартом обработки
-        waitForInitialization();
-
-        if (!initialized.get()) {
-            System.out.println("❌ SnapshotProcessor НЕ ИНИЦИАЛИЗИРОВАН!");
-            return;
-        }
-
-        System.out.println("✅ SnapshotProcessor инициализирован, подписываемся на Kafka...");
-
         snapshotConsumer.subscribe(Collections.singletonList("telemetry.snapshots.v1"));
-        System.out.println("✅ Подписались на топик telemetry.snapshots.v1");
-
-        int messageCount = 0;
+        log.info("SnapshotProcessor запущен и подписан на топик telemetry.snapshots.v1");
 
         try {
-            while (running.get() && !Thread.currentThread().isInterrupted()) {
+            while (running && !Thread.currentThread().isInterrupted()) {
                 try {
-                    System.out.println("⏳ Ожидаем сообщения из Kafka...");
-                    ConsumerRecords<String, SensorsSnapshotAvro> records =
-                            snapshotConsumer.poll(Duration.ofMillis(pollTimeout));
+                    ConsumerRecords<String, SensorsSnapshotAvro> records = snapshotConsumer.poll(Duration.ofMillis(1000));
 
-                    if (!records.isEmpty()) {
-                        messageCount += records.count();
-                        System.out.println("📥 Получено " + records.count() + " сообщений (всего: " + messageCount + ")");
+                    for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
+                        System.out.println("=== GITHUB_DEBUG_SNAPSHOT ===");
+                        System.out.println("📥 Снапшот получен: key=" + record.key() +
+                                ", hubId=" + record.value().getHubId() +
+                                ", сенсоров=" + record.value().getSensorsState().size());
 
-                        for (ConsumerRecord<String, SensorsSnapshotAvro> record : records) {
-                            System.out.println("=== GITHUB_DEBUG_SNAPSHOT_RECEIVED ===");
-                            System.out.println("Key: " + record.key());
-                            System.out.println("HubId: " + record.value().getHubId());
-                            System.out.println("Partition: " + record.partition());
-                            System.out.println("Offset: " + record.offset());
 
-                            SensorsSnapshotAvro snapshot = record.value();
-                            String hubId = snapshot.getHubId();
-                            if (hubId == null) {
-                                hubId = "default-hub";
-                            }
+                        SensorsSnapshotAvro snapshot = record.value();
+                        log.info("📊 Снапшот детально: {}", snapshot);
 
-                            System.out.println("🚀 ВЫЗЫВАЕМ handler для хаба: " + hubId);
-                            try {
-                                handlerEvent.handler(record.value(), hubId);
-                                System.out.println("✅ handler успешно вызван");
-                            } catch (Exception e) {
-                                System.out.println("❌ Ошибка в handler: " + e.getMessage());
-                                e.printStackTrace();
-                            }
+                        // Логируем каждый сенсор в снапшоте
+                        snapshot.getSensorsState().forEach((sensorId, sensorState) -> {
+                            log.info("🔍 Сенсор {}: timestamp={}, data={}",
+                                    sensorId, sensorState.getTimestamp(), sensorState.getData());
+                        });
+
+                        String hubId = snapshot.getHubId();
+                        if (hubId == null) {
+                            hubId = "default-hub";
+                            log.warn("hubId был null, используем: {}", hubId);
                         }
 
+                        handlerEvent.handler(record.value(), hubId);
+                    }
+
+                    if (!records.isEmpty()) {
                         snapshotConsumer.commitSync();
-                        System.out.println("✅ Коммит сделан");
-                    } else {
-                        System.out.println("⏳ Сообщений нет...");
+                        log.debug("Закоммичено {} сообщений", records.count());
                     }
 
                 } catch (org.apache.kafka.common.errors.WakeupException e) {
-                    System.out.println("🛑 WakeupException - завершаем работу");
+                    // Это нормальное исключение при вызове wakeup()
+                    log.info("WakeupException получен, завершаем работу SnapshotProcessor");
                     break;
                 } catch (Exception e) {
-                    System.out.println("❌ Ошибка в SnapshotProcessor: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("Ошибка при обработке снапшотов", e);
                 }
             }
         } finally {
-            System.out.println("=== GITHUB_DEBUG_SNAPSHOT_PROCESSOR_STOP ===");
-            System.out.println("Всего обработано сообщений: " + messageCount);
+            // Закрываем consumer без прерывания
             closeConsumerQuietly();
-        }
-    }
-
-    private void waitForInitialization() {
-        long startTime = System.currentTimeMillis();
-        log.info("SnapshotProcessor: ожидание инициализации (таймаут: {} мс)", initializationTimeout);
-
-        while (!initialized.get() &&
-                (System.currentTimeMillis() - startTime) < initializationTimeout) {
-            try {
-                Thread.sleep(1000);
-                long elapsed = (System.currentTimeMillis() - startTime) / 1000;
-                log.info("SnapshotProcessor: ждем инициализации... {} сек", elapsed);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("SnapshotProcessor: прервано ожидание инициализации");
-                break;
-            }
-        }
-
-        if (initialized.get()) {
-            log.info("SnapshotProcessor: успешно инициализирован за {} мс",
-                    System.currentTimeMillis() - startTime);
-        } else {
-            log.warn("SnapshotProcessor: не инициализирован в течение {} мс",
-                    System.currentTimeMillis() - startTime);
+            log.info("SnapshotProcessor полностью остановлен");
         }
     }
 
     private void closeConsumerQuietly() {
         try {
+            // Отписываемся от топиков перед закрытием
             snapshotConsumer.unsubscribe();
+            // Закрываем consumer с небольшим таймаутом
             snapshotConsumer.close(Duration.ofSeconds(5));
         } catch (Exception e) {
             log.warn("Ошибка при закрытии consumer: {}", e.getMessage());
@@ -148,18 +91,21 @@ public class SnapshotProcessor implements Runnable {
         if (processorThread == null || !processorThread.isAlive()) {
             processorThread = new Thread(this, "SnapshotProcessorThread");
             processorThread.start();
-            log.info("SnapshotProcessor поток запущен (ожидает инициализации)");
+            log.info("SnapshotProcessor запущен");
         }
     }
 
     public void shutdown() {
         log.info("Запущен graceful shutdown SnapshotProcessor");
-        running.set(false);
+        running = false;
+
+        // Используем wakeup() для корректного выхода из poll()
         snapshotConsumer.wakeup();
 
+        // Ждем завершения потока
         if (processorThread != null && processorThread.isAlive()) {
             try {
-                processorThread.join(10000);
+                processorThread.join(10000); // 10 секунд на завершение
                 if (processorThread.isAlive()) {
                     log.warn("Поток SnapshotProcessor не завершился за отведенное время");
                 }
@@ -168,14 +114,5 @@ public class SnapshotProcessor implements Runnable {
                 log.warn("Прервано ожидание завершения SnapshotProcessor");
             }
         }
-    }
-
-    public void setInitialized(boolean value) {
-        initialized.set(value);
-        log.info("SnapshotProcessor initialized = {}", value);
-    }
-
-    public boolean isInitialized() {
-        return initialized.get();
     }
 }
