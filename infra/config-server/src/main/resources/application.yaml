@@ -1,3 +1,6 @@
+server:
+  port: 0  # Случайный порт
+
 spring:
   application:
     name: config-server
@@ -7,18 +10,14 @@ spring:
     config:
       server:
         native:
-          search-locations:
-            - "classpath:/config/telemetry/{application}"
-            - "classpath:/config/commerce/{application}"
-
-server:
-  port: 0
+          search-locations: "classpath:/config/"
+  config:
+    import: "optional:configserver:"
 
 eureka:
-  instance:
-    hostname: localhost
-    prefer-ip-address: false
   client:
     service-url:
-      enabled: true
       defaultZone: http://localhost:8761/eureka/
+  instance:
+    instance-id: ${spring.application.name}:${random.int[1000,9999]}
+    prefer-ip-address: false

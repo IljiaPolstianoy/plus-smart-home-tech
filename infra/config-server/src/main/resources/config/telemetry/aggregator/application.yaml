@@ -1,53 +1,13 @@
-server:
-  port: 0
-
-grpc:
-  server:
-    port: 9091
-
+# Эта конфигурация будет доставлена Aggregator'у через Config Server
 spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: aggregator-group-ci
+      group-id: aggregator-group
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
 
-# Логирование - только минимум
+# Общие настройки логирования
 logging:
   level:
-    # AggregationStarter - максимальное логирование
-    ru.yandex.practicum.AggregationStarter: DEBUG
-    ru.yandex.practicum.processor.SnapshotProcessor: DEBUG
-    ru.yandex.practicum.handler.HandlerEvent: DEBUG
-    ru.yandex.practicum.handler.HandlerEventImpl: DEBUG
-
-    # Spring Kafka - минимальное логирование
-    org.springframework.kafka: ERROR
-
-    # Kafka - минимальное логирование
-    org.apache.kafka: WARN
-    org.apache.kafka.clients.producer: WARN
-    org.apache.kafka.clients.consumer: WARN
-
-    # Сетевые компоненты - только ошибки
-    org.apache.kafka.clients.NetworkClient: ERROR
-    org.apache.kafka.clients.Metadata: ERROR
-
-    # Сериализация - только ошибки
-    org.apache.kafka.common.serialization: ERROR
-
-    # Компоненты потребителя - информационное логирование
-    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: INFO
-    org.apache.kafka.clients.consumer.internals.Fetcher: INFO
-
-    # Кастомные сериализаторы - отладочное логирование
-    ru.yandex.practicum.mapping.SensorEventDeserializer: DEBUG
-    ru.yandex.practicum.mapping.SensorSnapshotSerializer: DEBUG
-
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+    ru.yandex.practicum: INFO
+    org.springframework.cloud: INFO

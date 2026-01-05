@@ -1,25 +1,26 @@
-# Этот файл БЕЗ spring.config.import - он уже в bootstrap.yaml
-# Основные настройки
+spring.config.import: "optional:configserver:"
 
-# Переопределение для CI окружения
----
 spring:
-  config:
-    activate:
-      on-profile: ci
-    import: "optional:configserver:"
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: aggregator-group-ci
+  application:
+    name: aggregator
+  
   cloud:
     config:
-      fail-fast: false
-      retry:
-        max-attempts: 1
+      discovery:
+        enabled: true
+        service-id: config-server
 
-# Логирование для отладки
-logging:
-  level:
-    ru.yandex.practicum: DEBUG
-    org.springframework.cloud.config: WARN
+  kafka:
+    bootstrap-servers: localhost:9092  # Значение по умолчанию
+    consumer:
+      group-id: aggregator-group
+
+server:
+  port: 0
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    instance-id: ${spring.application.name}:${server.port}

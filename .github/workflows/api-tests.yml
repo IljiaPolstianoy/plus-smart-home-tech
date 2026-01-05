@@ -14,97 +14,19 @@ on:
         default: false
         type: boolean
   pull_request:
-    types: [opened, synchronize, reopened]
+    inputs:
+      verbose_mode:
+        required: false
+        type: string
+        default: "false"
+      print_logs:
+        required: false
+        type: string
+        default: "false"
 
 jobs:
-  setup-services:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Build all JARs
-        run: |
-          mvn clean package -DskipTests
-
-      - name: Start Eureka Server (background)
-        run: |
-          cd eureka-server/target
-          nohup java -jar eureka-server-*.jar --server.port=8761 > eureka.log 2>&1 &
-          echo $! > .eureka_pid
-
-      - name: Wait for Eureka to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -s http://localhost:8761/eureka/health | grep "UP"; then
-              echo "Eureka is ready"
-              break
-            fi
-            echo "Waiting for Eureka... ($i/30)"
-            sleep 5
-          done
-          if ! curl -s http://localhost:8761/eureka/health | grep "UP"; then
-            echo "Eureka failed to start"
-            cat eureka.log
-            exit 1
-          fi
-
-      - name: Start Config Server (background)
-        run: |
-          cd config-server/target
-          nohup java -jar config-server-*.jar > config.log 2>&1 &
-          echo $! > .config_pid
-
-      - name: Wait for Config Server to register in Eureka
-        run: |
-          for i in {1..30}; do
-            if curl -s http://localhost:8761/eureka/apps | grep -i "config-server"; then
-              echo "Config Server registered in Eureka"
-              break
-            fi
-            echo "Waiting for Config Server registration... ($i/30)"
-            sleep 5
-          done
-          if ! curl -s http://localhost:8761/eureka/apps | grep -i "config-server"; then
-            echo "Config Server failed to register"
-            cat config.log
-            exit 1
-          fi
-
-      - name: Start Aggregator (background)
-        run: |
-          cd telemetry/aggregator/target
-          nohup java -jar aggregator-*.jar > aggregator.log 2>&1 &
-          echo $! > .aggregator_pid
-
-      - name: Wait for Aggregator to start
-        run: sleep 15
-
-  run-tests:
-    needs: setup-services  # Зависит от успешного старта сервисов
+  build:
     uses: yandex-praktikum/plus-smart-home-tech/.github/workflows/api-tests.yml@ci
     with:
       verbose_mode: ${{ inputs.verbose_mode }}
       print_logs: ${{ inputs.print_logs }}
-
-  cleanup:
-    needs: [setup-services, run-tests]  # Выполняется всегда
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Stop all services
-        run: |
-          echo "Stopping services..."
-          if [ -f .eureka_pid ]; then kill $(cat .eureka_pid) || true; fi
-          if [ -f .config_pid ]; then kill $(cat .config_pid) || true; fi
-          if [ -f .aggregator_pid ]; then kill $(cat .aggregator_pid) || true; fi
-          pkill -f "eureka-server-.*\.jar" || true
-          pkill -f "config-server-.*\.jar" || true
-          pkill -f "aggregator-.*\.jar" || true
-          sleep 5
