@@ -37,7 +37,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         }
 
         final List<ShoppingCartAndProduct> shoppingCartAndProducts = shoppingCartAndProductRepository
-                .findByShoppingCart_ShoppingCartId(shoppingCart.getShoppingCartId());
+                .findByShoppingCartId(shoppingCart.getShoppingCartId());
 
         final List<ProductInCat> products = new ArrayList<>();
 
@@ -108,8 +108,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             final List<String> productName
     ) {
         checkProductsInCat(userName, productName);
-        if (!shoppingCartAndProductRepository
-                .removeAllShoppingCartAndProductByProduct_ProductIdInAndShoppingCart_UserName(productName, userName)) {
+        if (!shoppingCartAndProductRepository.removeAllFromCart(productName, userName)) {
             throw new ErrorWhenDeletingAnItemFromTheShoppingCart(
                     "Ошибка при удаление товара с id "
                             + productName
@@ -126,7 +125,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             final ChangeProductQuantityRequest changeProductQuantityRequest
     ) {
         final ShoppingCartAndProduct shoppingCartAndProduct = shoppingCartAndProductRepository
-                .findByShoppingCart_UserNameAndProduct_ProductId(
+                .findByShoppingCartUserNameAndProductId(
                         userName,
                         changeProductQuantityRequest.getProductId()
                 ).orElseThrow(() -> new NoProductsInShoppingCartException(
@@ -161,7 +160,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     ) {
 
         final List<ShoppingCartAndProduct> shoppingCartAndProducts = shoppingCartAndProductRepository
-                .findByShoppingCart_ShoppingCartId(userName);
+                .findByShoppingCartId(userName);
         final List<String> products = shoppingCartAndProducts.stream()
                 .map(ShoppingCartAndProduct::getProduct)
                 .map(ProductDto::getProductId)
