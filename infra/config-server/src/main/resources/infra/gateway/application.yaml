@@ -1,0 +1,38 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: shopping_cart_circuit_breaker_route
+          uri: lb://shopping-cart
+          predicates:
+            - Path=/shopping-cart/**
+          filters:
+            - CircuitBreaker=myCircuitBreaker
+        - id: shopping_store_circuit_breaker_route
+          uri: lb://shopping-store
+          predicates:
+            - Path=/shopping-store/**
+          filters:
+            - RewritePath=/product-store/**
+            - name: Retry
+              args:
+                retries: 3
+                statuses:
+                  - INTERNAL_SERVER_ERROR
+                  - NOT_FOUND
+                methods:
+                  - GET
+                  - POST
+                series: SERVER_ERROR
+                exceptions:
+                  - com.example.exception.ProductNotFoundException
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 1s
+                  factor: 2
+                  basedOnPreviousValue: false
+            - CircuitBreaker=myCircuitBreaker
+      discovery.locator.enable: true
+
+server:
+  port: 8080
