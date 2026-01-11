@@ -10,7 +10,7 @@ import ru.yandex.practicum.PaymentRepository;
 import ru.yandex.practicum.feign.OrderFeignClient;
 import ru.yandex.practicum.feign.ShoppingStoreFeignClient;
 import ru.yandex.practicum.model.constant.LogDefault;
-import ru.yandex.practicum.model.error.NoOrderFoundException;
+import ru.yandex.practicum.model.error.NoPaymentFoundException;
 import ru.yandex.practicum.model.error.NotEnoughInfoInOrderToCalculateException;
 import ru.yandex.practicum.model.order.OrderDto;
 import ru.yandex.practicum.model.payment.Payment;
@@ -63,7 +63,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentRepository.save(payment.get());
         }
 
-        throw new NoOrderFoundException(
+        throw new NoPaymentFoundException(
                 "Платеж не найден",
                 "Платеж с id + " + payment.get().getPaymentId() + " не найден",
                 HttpStatus.NOT_FOUND
@@ -107,7 +107,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentRepository.save(payment.get());
         }
 
-        throw new NoOrderFoundException(
+        throw new NoPaymentFoundException(
                 "Платеж не найден",
                 "Платеж с id + " + payment.get().getPaymentId() + " не найден",
                 HttpStatus.NOT_FOUND
