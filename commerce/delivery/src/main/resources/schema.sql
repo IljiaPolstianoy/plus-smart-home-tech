@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS delivery
     address_from  VARCHAR REFERENCES address (address_id),
     address_to    VARCHAR REFERENCES address (address_id),
     state        delivery_state,
-    order_id     VARCHAR
+    orders_id     VARCHAR
 
 );
 

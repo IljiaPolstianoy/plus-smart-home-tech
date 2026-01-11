@@ -16,7 +16,7 @@ CREATE TYPE order_state AS ENUM (
 
 CREATE TABLE IF NOT EXISTS orders
 (
-    order_id         VARCHAR PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    orders_id         VARCHAR PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
     shopping_cart_id VARCHAR(255) REFERENCES shopping_cart (shopping_cart_id) ON DELETE CASCADE,
     payment_id       VARCHAR(255),
     delivery_id      VARCHAR(255),
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS orders
 
 CREATE TABLE IF NOT EXISTS orders_products
 (
-    order_id   VARCHAR REFERENCES orders (order_id) ON DELETE CASCADE,
+    order_id   VARCHAR REFERENCES orders (orders_id) ON DELETE CASCADE,
     product_id VARCHAR REFERENCES product (product_id) ON DELETE CASCADE,
     quantity   BIGINT NOT NULL,
     PRIMARY KEY (order_id, product_id)

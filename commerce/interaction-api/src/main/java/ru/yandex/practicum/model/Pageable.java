@@ -1,6 +1,7 @@
 package ru.yandex.practicum.model;
 
 import jakarta.validation.constraints.Min;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -10,6 +11,7 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
+@Builder(toBuilder = true)
 public class Pageable {
 
     @Min(value = 0, message = "Page must be greater than or equal to 0")

@@ -1,3 +1,4 @@
+/*
 package ru.yandex.practicum.model;
 
 import jakarta.persistence.*;
@@ -26,4 +27,4 @@ public class OrdersProduct {
     @Column(name = "quantity", nullable = false)
     private Long quantity;
 
-}
+}*/

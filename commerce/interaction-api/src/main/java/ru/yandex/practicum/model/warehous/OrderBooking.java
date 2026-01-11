@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "order_booking")
+@Table(name = "booking")
 @Getter
 @Setter
 @Builder
@@ -16,7 +16,7 @@ import java.util.Set;
 public class OrderBooking {
 
     @Id
-    @Column(name = "order_booking_id")
+    @Column(name = "booking_id")
     private String id;
 
     @Column(name = "order_id", nullable = false, unique = true)

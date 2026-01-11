@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import ru.yandex.practicum.model.shopping.ShoppingCart;
+import ru.yandex.practicum.model.warehous.OrdersProduct;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
@@ -18,7 +19,7 @@ import java.util.Set;
 @Table(name = "orders")
 public class Order {
     @Id
-    @Column(name = "order_id", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "orders_id", nullable = false, length = Integer.MAX_VALUE)
     private String orderId;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -17,7 +17,7 @@ public class BookedProduct {
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_booking_id", nullable = false)
+    @JoinColumn(name = "booking_id", nullable = false)
     private OrderBooking orderBooking;
 
     @Id

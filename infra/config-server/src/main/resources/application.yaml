@@ -10,7 +10,9 @@ spring:
     config:
       server:
         native:
-          search-locations: "classpath:/config/"
+          searchLocations:
+          - classpath:config/commerce/{application}
+          - classpath:config/infra/{application}
   config:
     import: "optional:configserver:"
 

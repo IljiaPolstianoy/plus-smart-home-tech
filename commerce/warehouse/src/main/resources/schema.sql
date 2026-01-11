@@ -14,17 +14,17 @@ CREATE TABLE IF NOT EXISTS product_quantity
     quantity            BIGINT
 );
 
-CREATE TABLE IF NOT EXISTS order_booking
+CREATE TABLE IF NOT EXISTS booking
 (
-    order_booking_id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id         VARCHAR NOT NULL UNIQUE,
     delivery_id      VARCHAR NULL
 );
 
 CREATE TABLE IF NOT EXISTS booked_product
 (
-    order_booking_id VARCHAR REFERENCES order_booking (order_booking_id) ON DELETE CASCADE,
+    booking_id VARCHAR REFERENCES booking (booking_id) ON DELETE CASCADE,
     product_id       VARCHAR REFERENCES product (product_id) ON DELETE CASCADE,
     quantity         BIGINT,
-    PRIMARY KEY (order_booking_id, product_id)
+    PRIMARY KEY (booking_id, product_id)
 )
