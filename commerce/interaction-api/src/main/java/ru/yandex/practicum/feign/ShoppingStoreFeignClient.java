@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.model.Pageable;
 import ru.yandex.practicum.model.product.ProductCategory;
 import ru.yandex.practicum.model.product.ProductDto;
 import ru.yandex.practicum.model.quantity.SetProductQuantityStateRequest;

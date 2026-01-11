@@ -2,7 +2,6 @@ package ru.yandex.practicum.model.delivery;
 
 import jakarta.persistence.*;
 import lombok.*;
-import ru.yandex.practicum.model.order.OrderDto;
 
 import java.math.BigDecimal;
 

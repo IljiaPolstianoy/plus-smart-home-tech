@@ -5,8 +5,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.yandex.practicum.model.warehous.ProductsInWarehouse;
 
-import java.util.Optional;
-
 public interface WareHouseRepository extends JpaRepository<ProductsInWarehouse, Long> {
 
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END " +

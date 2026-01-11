@@ -16,13 +16,13 @@ import java.util.Optional;
 public interface ShoppingCartFeignClient {
 
     @GetMapping("/api/v1/shopping-cart")
-    public Optional<ShoppingCartDto> getShoppingCart(@RequestParam @NotNullOrBlank(
+    Optional<ShoppingCartDto> getShoppingCart(@RequestParam @NotNullOrBlank(
             message = "Имя пользователя не должно быть пустым",
             exceptionType = ExceptionType.NOT_AUTHORIZED
     ) final String userName);
 
     @PutMapping("/api/v1/shopping-cart")
-    public Optional<ShoppingCartDto> addProductsInShoppingCart(
+    Optional<ShoppingCartDto> addProductsInShoppingCart(
             @RequestParam @NotNullOrBlank(
                     message = "Имя пользователя не должно быть пустым",
                     exceptionType = ExceptionType.NOT_AUTHORIZED
@@ -30,13 +30,13 @@ public interface ShoppingCartFeignClient {
             @RequestBody @Valid final List<ChangeProductQuantityRequest> changeProductQuantityRequests);
 
     @DeleteMapping("/api/v1/shopping-cart")
-    public boolean deleteShoppingCart(@RequestParam @NotNullOrBlank(
+    boolean deleteShoppingCart(@RequestParam @NotNullOrBlank(
             message = "Имя пользователя не должно быть пустым",
             exceptionType = ExceptionType.NOT_AUTHORIZED
     ) final String userName);
 
     @PostMapping("/api/v1/shopping-cart/remove")
-    public Optional<ShoppingCartDto> removeProductsInShoppingCart(
+    Optional<ShoppingCartDto> removeProductsInShoppingCart(
             @RequestParam @NotNullOrBlank(
                     message = "Имя пользователя не должно быть пустым",
                     exceptionType = ExceptionType.NOT_AUTHORIZED
@@ -45,7 +45,7 @@ public interface ShoppingCartFeignClient {
     );
 
     @PostMapping("/api/v1/shopping-cart/change-quantity")
-    public Optional<ShoppingCartDto> changeQuantityInShoppingCart(
+    Optional<ShoppingCartDto> changeQuantityInShoppingCart(
             @RequestParam @NotNullOrBlank(
                     message = "Имя пользователя не должно быть пустым",
                     exceptionType = ExceptionType.NOT_AUTHORIZED
