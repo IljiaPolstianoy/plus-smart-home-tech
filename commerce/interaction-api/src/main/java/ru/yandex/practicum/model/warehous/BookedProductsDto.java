@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 @Setter
 @ToString
 @Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class BookedProductsDto {
 
     @NotNull

@@ -18,6 +18,26 @@
           <package value="ru.yandex.practicum" />
         </packages>
       </persistence-unit>
+      <persistence-unit moduleName="analyzer" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="order" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="payment" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="delivery" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum" />
+        </packages>
+      </persistence-unit>
     </persistence-units>
   </component>
 </project>

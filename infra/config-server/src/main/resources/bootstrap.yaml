@@ -6,5 +6,4 @@ spring:
       server:
         native:
           search-locations:
-            - "classpath:/config/commerce/{application}"
-            - "classpath:/config/infra/{application}"
+            - "classpath:/config/commerce{application}"

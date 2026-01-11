@@ -28,4 +28,9 @@ public class ProductQuantity {
          this.quantity += quantity;
          return true;
     }
+
+    public boolean removeQuantity(Long quantity) {
+        this.quantity -= quantity;
+        return true;
+    }
 }
