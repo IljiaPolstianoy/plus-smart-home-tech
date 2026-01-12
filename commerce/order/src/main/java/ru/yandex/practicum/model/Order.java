@@ -55,10 +55,7 @@ public class Order {
     @OneToMany(mappedBy = "order")
     private Set<OrdersProduct> ordersProducts = new LinkedHashSet<>();
 
-/*
- TODO [Amplicode] create field to map the 'state' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
     @Column(name = "state", columnDefinition = "order_state(0, 0)")
     private Object state;
-*/
+
 }
