@@ -10,7 +10,9 @@ spring:
     config:
       server:
         native:
-          search-locations: "classpath:/config/"
+          searchLocations:
+          - classpath:config/commerce/{application}
+          - classpath:config/infra/{application}
   config:
     import: "optional:configserver:"
 
@@ -21,3 +23,4 @@ eureka:
   instance:
     instance-id: ${spring.application.name}:${random.int[1000,9999]}
     prefer-ip-address: false
+    hostname: localhost

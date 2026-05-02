@@ -1,15 +1,15 @@
 package ru.yandex.practicum;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.feign.WarehouseFeignClient;
-import ru.yandex.practicum.service.WareHouseService;
 import ru.yandex.practicum.model.shopping.ShoppingCartDto;
-import ru.yandex.practicum.model.warehous.AddProductToWarehouseRequest;
-import ru.yandex.practicum.model.warehous.AddressDto;
-import ru.yandex.practicum.model.warehous.BookedProductsDto;
-import ru.yandex.practicum.model.warehous.NewProductInWarehouseRequest;
+import ru.yandex.practicum.model.warehous.*;
+import ru.yandex.practicum.service.WareHouseService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/warehouse")
@@ -22,6 +22,25 @@ public class WareHouseController implements WarehouseFeignClient {
     @PutMapping
     public boolean create(@RequestBody final NewProductInWarehouseRequest newProductInWarehouseRequest) {
         return wareHouseService.create(newProductInWarehouseRequest);
+    }
+
+    @PostMapping("/shipped")
+    public boolean shippedProductsInDelivery(@RequestBody @Valid final ShippedToDeliveryRequest shippedToDeliveryRequest) {
+        return wareHouseService.shippedProductsInDelivery(shippedToDeliveryRequest);
+    }
+
+    @PostMapping("/return")
+    public boolean returnProducts(
+            @RequestBody @Valid final List<AddProductToWarehouseRequest> addProductToWarehouseRequest
+    ) {
+        return wareHouseService.returnProducts(addProductToWarehouseRequest);
+    }
+
+    @PostMapping("/assembly")
+    public BookedProductsDto assemblyProducts(
+            @RequestBody @Valid final AssemblyProductsForOrderRequest assemblyProductsForOrderRequest
+    ) {
+        return wareHouseService.assemblyProducts(assemblyProductsForOrderRequest);
     }
 
     @PostMapping("/check")

@@ -12,6 +12,8 @@ import ru.yandex.practicum.model.product.ProductCategory;
 import ru.yandex.practicum.model.product.ProductDto;
 import ru.yandex.practicum.model.quantity.SetProductQuantityStateRequest;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/shopping-store")
 @RequiredArgsConstructor
@@ -20,12 +22,21 @@ public class ShoppingStoreController implements ShoppingStoreFeignClient {
 
     private final ShoppingStoreService shoppingStoreService;
 
-    @GetMapping
+    @GetMapping("/api/v1/shopping-store")
     public Page<ProductDto> getProducts(
-            @Valid @ModelAttribute final Pageable pageable,
-            @RequestBody final ProductCategory category
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "sort", required = false) List<String> sort,
+            @RequestParam(value = "category", required = false) ProductCategory category
     ) {
-        return shoppingStoreService.getProducts(pageable, category);
+
+        return shoppingStoreService.getProducts
+                (Pageable.builder()
+                                .page(page)
+                                .size(size)
+                                .sort(sort)
+                                .build(),
+                        category);
     }
 
     @PutMapping

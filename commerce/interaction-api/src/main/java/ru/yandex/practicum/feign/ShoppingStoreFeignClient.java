@@ -5,32 +5,35 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.model.Pageable;
 import ru.yandex.practicum.model.product.ProductCategory;
 import ru.yandex.practicum.model.product.ProductDto;
 import ru.yandex.practicum.model.quantity.SetProductQuantityStateRequest;
+
+import java.util.List;
 
 @FeignClient(name = "shopping-store")
 public interface ShoppingStoreFeignClient {
 
     @GetMapping("/api/v1/shopping-store")
-    public Page<ProductDto> getProducts(
-            @Valid @ModelAttribute Pageable pageable,
-            @RequestBody ProductCategory category
+    Page<ProductDto> getProducts(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "sort", required = false) List<String> sort,
+            @RequestParam(value = "category", required = false) ProductCategory category
     );
 
     @PutMapping("/api/v1/shopping-store")
-    public ProductDto createProduct(@Valid @RequestBody ProductDto productDto);
+    ProductDto createProduct(@Valid @RequestBody ProductDto productDto);
 
     @PostMapping("/api/v1/shopping-store")
-    public ProductDto updateProduct(@Valid @RequestBody ProductDto productDto);
+    ProductDto updateProduct(@Valid @RequestBody ProductDto productDto);
 
     @PostMapping("/api/v1/shopping-store/removeProductFromStore")
-    public boolean removeProductFromStore(@NotNull @RequestBody String productId);
+    boolean removeProductFromStore(@NotNull @RequestBody String productId);
 
     @PostMapping("/api/v1/shopping-store/quantityState")
-    public boolean updateQuantityState(@NotNull @RequestBody SetProductQuantityStateRequest setProductQuantityStateRequest);
+    boolean updateQuantityState(@NotNull @RequestBody SetProductQuantityStateRequest setProductQuantityStateRequest);
 
     @GetMapping("/api/v1/shopping-store/{productId}")
-    public ProductDto getProduct(@NotNull @PathVariable String productId);
+    ProductDto getProduct(@NotNull @PathVariable String productId);
 }
